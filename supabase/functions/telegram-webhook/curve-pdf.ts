@@ -110,7 +110,7 @@ function publicAssetBases(baseUrl:any){
 async function embedPublicPng(pdf:any,baseUrl:any,relativePath:string){
   const cleanPath=String(relativePath||'').replace(/^\/+/,''),errors:string[]=[];
   for(const base of publicAssetBases(baseUrl)){
-    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42609`;
+    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42610`;
     try{
       const response=await fetch(url,{headers:{'Accept':'image/png'}});
       if(!response.ok){errors.push(`${response.status} ${url}`);continue}
@@ -124,7 +124,7 @@ async function embedPublicPng(pdf:any,baseUrl:any,relativePath:string){
 async function embedPublicJpg(pdf:any,baseUrl:any,relativePath:string){
   const cleanPath=String(relativePath||'').replace(/^\/+/,''),errors:string[]=[];
   for(const base of publicAssetBases(baseUrl)){
-    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42609`;
+    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42610`;
     try{
       const response=await fetch(url,{headers:{'Accept':'image/jpeg'}});
       if(!response.ok){errors.push(`${response.status} ${url}`);continue}
@@ -444,12 +444,12 @@ function drawRow4(page:any,font:any,vals:any[],y:number,h=18,weights=[.22,.28,.2
 }
 function pdfPumpType(a:any){
   if(a?.family==='BFI')return 'HMS Pump';if(a?.family!=='CHC')return `${a?.series||'ES'} End Suction Pump`;
-  const visible=`${String(a?.series||'')} ${String(a?.model||'')}`;if(/\bSVM\b/i.test(visible))return 'SVM Pump';if(/\bVMS\b/i.test(visible))return 'VMS Pump';
-  const brand=String(a?.brand||'').toLowerCase().replace(/[^a-z0-9]+/g,'');if(brand==='tesk')return 'SVM Pump';if(brand!=='bgreich')return 'VMS Pump';return `${a?.series||'CHC'} Pump`;
+  const visible=`${String(a?.series||'')} ${String(a?.model||'')}`,brand=String(a?.brand||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+  if(/\bSVM\b/i.test(visible)||brand==='tesk')return 'SVM Pump';return 'VMS Pump';
 }
 function drawPage2(page:any,logo:any,font:any,bold:any,a:any){
   drawTechHeader(page,logo,font,bold);
-  const d=dutyParts(a.dutyText),mt=a.motorTech||{},speedText=Number(a.rpm)>0?`${fmt(a.rpm,0)} rpm`:'-',motorSpeedText=Number(mt.rpm)>0?`${fmt(mt.rpm,0)} rpm`:'-';
+  const d=dutyParts(a.dutyText),mt=a.motorTech||{},speedText=a.enhanced?'Max 3500 rpm':Number(a.rpm)>0?`${fmt(a.rpm,0)} rpm`:'-',motorSpeedText=a.enhanced?'Max 3500 rpm':Number(mt.rpm)>0?`${fmt(mt.rpm,0)} rpm`:'-';
   let y=718;
   y=drawSection(page,font,'Operating Data',y);
   y=drawRow4(page,font,['Application','-','',''],y);

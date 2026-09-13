@@ -510,7 +510,7 @@ function parseHeadStep(text:string){
 }
 function quoteFamilyFromText(text:any){
   const s=String(text||'');
-  if(/\bbfi\b/i.test(s))return 'BFI';
+  if(/\b(?:bfi|hms)\b/i.test(s))return 'BFI';
   if(/\b(?:chc|vms|svm|vertical\s+multistage(?:\s+inline\s+pump)?)\b/i.test(s))return 'CHC';
   if(/\bes\s*[- ]?4\s*(?:p|pole)?\b|\b4\s*(?:p|pole)\s*es\b/i.test(s))return 'ES4';
   if(/\bes\s*[- ]?2\s*(?:p|pole)?\b|\b2\s*(?:p|pole)\s*es\b/i.test(s))return 'ES2';
@@ -532,7 +532,7 @@ function parseDirectPumpModel(text:any){
   const raw=String(text||'');
   // BFI identity: no suffix = 1Ph/IE1, T = 3Ph/IE2 standard, E = 3Ph/IE2 Enhanced.
   // KeyBot confirms the motor phase before finalising a direct BFI model.
-  const bfi=raw.match(/\bBFI\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?)\s*([TE])?\b/i);
+  const bfi=raw.match(/\b(?:BFI|HMS)\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?)\s*([TE])?\b/i);
   if(bfi){const suffix=String(bfi[3]||'').toUpperCase();return {family:'BFI',model:`BFI ${bfi[1]}-${String(bfi[2]).replace(/\s+/g,'')}${suffix}`};}
   const chc=raw.match(/\b(?:CHC|VMS)\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?(?:\s*-\s*\d{1,2})?)\b/i);
   if(chc)return {family:'CHC',model:`CHC ${chc[1]}-${String(chc[2]).replace(/\s+/g,'')}`};
@@ -863,6 +863,8 @@ async function guidedProductPresentation(service:any,companyId:string,product:an
   }catch(_){ }
   // V4.21.09: never expose legacy G1/G2 naming for the B.G.Reich master brand.
   if(['CHC_G1','CHC_G2'].includes(group)&&String(product?.brand_name||'').trim().toLowerCase()==='b.g.reich')brandSeries=group==='CHC_G1'?'CHC C4':'CHC C6';
+  // M.O.S uses the MVC selling-series name on the shared VMS hydraulic data.
+  if(['CHC_G1','CHC_G2'].includes(group)&&keybotFastBrandKey(product?.brand_name)==='mos'){brandSeries='MVC';sellingSeries='MVC'}
   return {brandSeries,sellingSeries,masterSeries};
 }
 function guidedAliasModel(model:any,presentation:any,group:any){let value=String(model||'').trim(),selling=String(presentation?.sellingSeries||'').trim();if(!selling)return value;const g=String(group||'').toUpperCase();if(g==='CHC_G1'||g==='CHC_G2')value=value.replace(/^(?:CHCS|CHCN|CHC)\b/i,selling);else if(g==='BFI')value=value.replace(/^BFI\b/i,selling);else if(g==='ES')value=value.replace(/^ES\b/i,selling);return value}
@@ -1133,7 +1135,7 @@ async function guidedSizeSelectedProducts(service:any,companyId:string,products:
   }
   const seen=new Set<string>(),dedup=out.sort(guidedSelectionCandidateCompare).filter((x:any)=>{const k=[x?.product?.key,x?.display_model||x?.model,x?.pole||0].join('|');if(seen.has(k))return false;seen.add(k);return true});return dedup.slice(0,Math.max(1,Math.min(240,Number(totalLimit)||12)));
 }
-function keybotFastPriceModelKey(group:any,value:any){let model=String(value||'').trim();const g=String(group||'').toUpperCase();if(g==='BFI')model=model.replace(/[TE]$/i,'');else if(g==='ES')model=model.replace(/^ES\s+/i,'');else if(['CHC_G1','CHC_G2'].includes(g))model=model.replace(/^(?:CHCS|CHCN|VMS|SVM)\b/i,'CHC');return cleanSearch(model)}
+function keybotFastPriceModelKey(group:any,value:any){let model=String(value||'').trim();const g=String(group||'').toUpperCase();if(g==='BFI')model=model.replace(/^HMS\b/i,'BFI').replace(/[TE]$/i,'');else if(g==='ES')model=model.replace(/^ES\s+/i,'');else if(['CHC_G1','CHC_G2'].includes(g))model=model.replace(/^(?:CHCS|CHCN|VMS|SVM)\b/i,'CHC');return cleanSearch(model)}
 function keybotFastPriceRowMeta(group:any,row:any){
   const g=String(group||'').toUpperCase();let entries:any[]=[];
   if(['CHC_G1','CHC_G2'].includes(g))entries=['usd','rmb','myr'].map(c=>({price:Number(row?.[`chc_${c}`]||0),rarity:pricingRarity(row?.[`chc_rarity_${c}`]||'common')}));
@@ -1156,16 +1158,16 @@ async function guidedOpenSelection(service:any,telegramToken:string,companyId:st
 
 
 function keybotFastLines(text:any){const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return lines.length>=2?{customer:lines[0],product:lines.slice(1).join(' ')}:null}
-function keybotFastLooksLikePump(text:any){return /\b(?:CHC|VMS|SVM|BFI|ES)\b/i.test(String(text||''))}
-function keybotFastLooksLikeExactPumpModel(text:any){const raw=String(text||'');return /\bBFI\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?\s*[TE]?\b/i.test(raw)||/\b(?:CHC|VMS|SVM|ES)\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?(?:\s*-\s*\d{1,2})?(?:\s+[24]\s*P(?:OLE)?)?\b/i.test(raw)}
+function keybotFastLooksLikePump(text:any){return /\b(?:CHC|VMS|SVM|BFI|HMS|ES)\b/i.test(String(text||''))}
+function keybotFastLooksLikeExactPumpModel(text:any){const raw=String(text||'');return /\b(?:BFI|HMS)\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?\s*[TE]?\b/i.test(raw)||/\b(?:CHC|VMS|SVM|ES)\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?(?:\s*-\s*\d{1,2})?(?:\s+[24]\s*P(?:OLE)?)?\b/i.test(raw)}
 function keybotFastRequestedDuty(text:any){const parsed=smartQuoteRequest(text),q=Number(parsed.flow_m3h||0),h=Number(parsed.head_m||0);return q>0&&h>0?{flow_m3h:q,head_m:h,duty_text:dutyDisplay(String(text||''),q,h).duty_text}:null}
 function keybotFastBrandKey(value:any){const raw=String(value||'').trim(),compact=raw.toLowerCase().replace(/[^a-z0-9]+/g,'');if(compact==='mos')return 'mos';if(compact==='ok'||compact==='okpump')return 'ok';return cleanSearch(raw)}
-function keybotFastBrandAliases(value:any){const raw=String(value||'').trim(),key=keybotFastBrandKey(raw);if(key==='mos')return guidedUnique([raw,'M.O.S','MOS','Mos']);if(key==='ok')return guidedUnique([raw,'O.K.Pump','OK Pump','OK']);return [raw]}
+function keybotFastBrandAliases(value:any){const raw=String(value||'').trim(),key=keybotFastBrandKey(raw);if(key==='mos')return guidedUnique([raw,'M.O.S','MOS','Mos']);if(key==='ok')return guidedUnique([raw,'O.K.Pump','O.K. Pump','O.K.','OKPump','OK Pump','O K Pump','OK']);return [raw]}
 function keybotFastProductSeriesKey(product:any){return cleanSearch(product?.brand_series||product?.product_label||'')}
 function keybotFastIsAssignedBrand(text:any,products:any[]){const key=keybotFastBrandKey(text);return !!key&&(products||[]).some((p:any)=>keybotFastBrandKey(p?.brand_name)===key)}
 function keybotFastRequestProductScope(input:any,products:any[]){
   const raw=String(input||''),stripped=keybotFastStripBrand(raw,products),query=String(stripped.query||raw),brandKey=keybotFastBrandKey(stripped.brand),chcScope=quoteChcScopeFromText(query);let series='';
-  if(/\bCHC\b/i.test(query))series='CHC';else if(/\bSVM\b/i.test(query))series='SVM';else if(/\bVMS\b/i.test(query))series='VMS';else if(/\bBFI\b/i.test(query))series='BFI';else if(/\bES\b/i.test(query))series='ES';
+  if(/\bCHC\b/i.test(query))series='CHC';else if(/\bSVM\b/i.test(query))series='SVM';else if(/\bVMS\b/i.test(query))series='VMS';else if(/\bHMS\b/i.test(query))series='HMS';else if(/\bBFI\b/i.test(query))series='BFI';else if(/\bES\b/i.test(query))series='ES';
   return {brandKey,series,chcScope,recognized:!!(brandKey||series)};
 }
 function keybotFastProductInScope(product:any,scope:any){
@@ -1174,7 +1176,8 @@ function keybotFastProductInScope(product:any,scope:any){
   if(scope?.chcScope&&group!==scope.chcScope)return false;
   if(series==='CHC')return brand==='b g reich'&&['CHC_G1','CHC_G2'].includes(group)&&/^chc(?:\s|$)/.test(label);
   if(series==='SVM')return ['CHC_G1','CHC_G2'].includes(group)&&/^svm(?:\s|$)/.test(label);
-  if(series==='VMS')return ['CHC_G1','CHC_G2'].includes(group)&&/^vms(?:\s|$)/.test(label);
+  if(series==='VMS')return ['CHC_G1','CHC_G2'].includes(group)&&!/^svm(?:\s|$)/.test(label)&&brand!=='tesk';
+  if(series==='HMS')return group==='BFI';
   if(series==='BFI')return group==='BFI';
   if(series==='ES')return group==='ES';
   return true;
@@ -1215,7 +1218,7 @@ async function keybotFastOpenPreparedMatch(service:any,telegramToken:string,comp
   }
   return await keybotFastOpenMatch(service,telegramToken,companyId,chatId,senderId,session,customer,match,context);
 }
-function keybotFastStripBrand(text:any,products:any[]){let raw=String(text||'').trim(),picked='';const brands=guidedUnique((products||[]).map((p:any)=>String(p.brand_name||'').trim())),aliases=brands.flatMap((brand:any)=>keybotFastBrandAliases(brand).map((alias:any)=>({brand,alias}))).sort((a:any,b:any)=>b.alias.length-a.alias.length);for(const x of aliases){const esc=String(x.alias).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),re=new RegExp(`^${esc}(?:\\s+|[-,;:/·]\\s*)`,'i');if(re.test(raw)){picked=x.brand;raw=raw.replace(re,'').trim();break}}return {brand:picked,query:raw}}
+function keybotFastStripBrand(text:any,products:any[]){let raw=String(text||'').trim(),picked='';const brands=guidedUnique((products||[]).map((p:any)=>String(p.brand_name||'').trim())),aliases=brands.flatMap((brand:any)=>keybotFastBrandAliases(brand).map((alias:any)=>({brand,alias}))).sort((a:any,b:any)=>b.alias.length-a.alias.length);for(const x of aliases){const esc=String(x.alias).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),re=new RegExp(`^${esc}(?:\\s*[-,;:/·]\\s*|\\s+)`,'i');if(re.test(raw)){picked=x.brand;raw=raw.replace(re,'').trim();break}}return {brand:picked,query:raw}}
 async function keybotFastModelMatches(service:any,companyId:string,products:any[],input:any){
   const scoped=keybotFastStripBrand(input,products),requestScope=keybotFastRequestProductScope(input,products),bfiDirect=parseDirectPumpModel(scoped.query)?.family==='BFI'?parseDirectPumpModel(scoped.query):null,bfiSuffix=String((String(bfiDirect?.model||'').match(/([TE])$/i)||[])[1]||'').toUpperCase(),poleMatch=String(scoped.query||'').match(/\b([24])\s*P(?:OLE)?\b/i),requestedPole=Number(poleMatch?.[1]||0),modelQuery=bfiDirect?bfiBaseModelName(bfiDirect.model):String(scoped.query||'').replace(/\b[24]\s*P(?:OLE)?\b/ig,' ').replace(/\s+/g,' ').trim(),brandKey=keybotFastBrandKey(scoped.brand),query=cleanSearch(modelQuery),exact:any[]=[],partial:any[]=[];if(!query)return [];
   const esDb:any=(globalThis as any).ES_SELECTOR_DB;
@@ -1245,7 +1248,7 @@ async function keybotFastModelMatches(service:any,companyId:string,products:any[
     }
     if(requestedPole)continue;
     let rows:any[]=[];try{rows=await guidedCatalogRows(service,product)}catch(_){continue}
-    for(const r of rows){let master=String(r.model||'').trim();if(!master)continue;const display=guidedAliasModel(master,presentation,group)||master,matchMaster=group==='BFI'?bfiBaseModelName(master):master,matchDisplay=group==='BFI'?bfiBaseModelName(display):display,labels=[matchDisplay,matchMaster];let score=99;for(const label of labels){const k=cleanSearch(label);if(k===query)score=Math.min(score,0);else if(k.startsWith(query))score=Math.min(score,1);else if(k.includes(query))score=Math.min(score,2)}if(score>2)continue;const selected={kind:'model',value:String(r.id||master),label:matchDisplay,meta:{id:String(r.id||''),master_model:matchMaster,display_model:matchDisplay,...(group==='BFI'?{bfi_fast_suffix:bfiSuffix}:{})}},chcGenLabel=group==='CHC_G1'?'CHC C4':group==='CHC_G2'?'CHC C6':'',entry={product,selected,path:[selected],label:`${String(product.brand_name||'Brand')} - ${chcGenLabel?`${chcGenLabel} - `:''}${matchDisplay}`,score};(score===0?exact:partial).push(entry)}
+    for(const r of rows){let master=String(r.model||'').trim();if(!master)continue;const display=guidedAliasModel(master,presentation,group)||master,matchMaster=group==='BFI'?bfiBaseModelName(master):master,matchDisplay=group==='BFI'?bfiBaseModelName(display):display,genericVms=['CHC_G1','CHC_G2'].includes(group)?matchMaster.replace(/^(?:CHCS|CHCN|CHC)\b/i,'VMS'):'',labels=[matchDisplay,matchMaster,genericVms].filter(Boolean);let score=99;for(const label of labels){const k=cleanSearch(label);if(k===query)score=Math.min(score,0);else if(k.startsWith(query))score=Math.min(score,1);else if(k.includes(query))score=Math.min(score,2)}if(score>2)continue;const selected={kind:'model',value:String(r.id||master),label:matchDisplay,meta:{id:String(r.id||''),master_model:matchMaster,display_model:matchDisplay,...(group==='BFI'?{bfi_fast_suffix:bfiSuffix}:{})}},showGeneration=keybotFastBrandKey(product?.brand_name)==='b g reich',chcGenLabel=showGeneration?(group==='CHC_G1'?'CHC C4':group==='CHC_G2'?'CHC C6':''):'',entry={product,selected,path:[selected],label:`${String(product.brand_name||'Brand')} - ${chcGenLabel?`${chcGenLabel} - `:''}${matchDisplay}`,score};(score===0?exact:partial).push(entry)}
   }
   const arr=exact.length?exact:partial;const seen=new Set<string>();return arr.sort((a:any,b:any)=>a.score-b.score||guidedNaturalCompare(a.label,b.label)).filter((x:any)=>{const k=[x.product?.key,x.selected?.meta?.master_model,x.selected?.meta?.pole||0].join('|');if(seen.has(k))return false;seen.add(k);return true}).slice(0,12)
 }
@@ -1260,7 +1263,8 @@ async function keybotFastOpenMatch(service:any,telegramToken:string,companyId:st
         const rated=exactEsRatedPoint(exact?.master_model,pole);if(!rated)throw new Error('Rated point could not be resolved for this ES model.');let item:any=selectPumpSummary('ES',Number(rated.flow_m3h),Number(rated.head_m),pole,String(exact?.master_model||''));item=guidedApplyProductIdentity({...item,display_model:display},product);lines.push('Type: End Suction Pump',`Speed: ${pole}P · ${inputNumber(item.rpm||0)} rpm`,Number(item.motor_kw)>0?`Motor: ${inputNumber(item.motor_kw)} kW / ${inputNumber(item.motor_hp)} HP`:null,item.suction?`Suction: ${item.suction}`:null,item.discharge?`Discharge: ${item.discharge}`:null,Number(item.impeller_mm)>0?`Full Size Impeller: Ø${inputNumber(item.impeller_mm)} mm`:null,Number(rated.min_impeller_mm)>0?`Min Size Impeller: Ø${inputNumber(rated.min_impeller_mm)} mm`:null);saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_exact_model_action',flow_m3h:Number(rated.flow_m3h),head_m:Number(rated.head_m),selected_customer_id:String(customer?.id||'')||null,context:{...c,pending_item:item,guided_exact_rated:rated}})||saved;
       }else{
         const info=group==='BFI'?directBfiModelInfo(exact?.master_model):directChcModelInfo(exact?.master_model,group);
-        if(info)lines.push(group==='BFI'?'Type: Horizontal Multistage Pump':'Type: Vertical Multistage Inline Pump',Number(info.motor_kw)>0?`Motor: ${inputNumber(info.motor_kw)} kW / ${inputNumber(info.motor_hp)} HP`:null,info.connection?`Connection: ${info.connection}`:null);
+        const pumpType=group==='BFI'?'HMS Pump':keybotFastBrandKey(product?.brand_name)==='tesk'||/\bSVM\b/i.test(display)?'SVM Pump':'VMS Pump';
+        if(info)lines.push(`Type: ${pumpType}`,Number(info.motor_kw)>0?`Motor: ${inputNumber(info.motor_kw)} kW / ${inputNumber(info.motor_hp)} HP`:null,info.connection?`Connection: ${info.connection}`:null);
       }
       await telegramSend(telegramToken,chatId,lines.filter(Boolean).join('\n'),telegramRemoveKeyboard());
       return await guidedSendExactRatedCurve(service,telegramToken,companyId,chatId,senderId,saved||session,customer,product,exact,pole);
@@ -2257,6 +2261,15 @@ Deno.serve(async(req)=>{
     // V4.19.11 Fast Search: exact model recognition runs before hydraulic-number parsing; sizing asks Flow & Head together.
     if(!callbackQuery&&text&&!menuText){
       const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),two=keybotFastLines(rawTelegramText),assignedProducts=user?await guidedUserAvailableProducts(service,keySuiteCompanyId,user):[];
+      // A Brand alias entered by itself starts a Brand-scoped sizing request.
+      // This prevents short aliases such as OK from falling through to Customer search.
+      if(user&&!two&&keybotFastExactMayOverrideSession(session)&&keybotFastIsAssignedBrand(rawTelegramText,assignedProducts)){
+        const brandKey=keybotFastBrandKey(rawTelegramText),wanted=assignedProducts.filter((p:any)=>p.has_curve===true&&keybotFastBrandKey(p.brand_name)===brandKey);
+        if(wanted.length){
+          const brand=String(wanted[0]?.brand_name||rawTelegramText).trim(),saved=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'guided',step:'guided_selection_waiting_duty',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{keysuite_user_email:user.email,guided_selection_products:wanted,guided_selection_keys:wanted.map((p:any)=>String(p.key)),guided_selection_candidates:null,guided_product:null,pending_item:null}});
+          await telegramSend(telegramToken,chatId,`Brand: ${brand}\n\nEnter Flow @ Head.\nExample: 10m3/hr @ 70m`,guidedInputNavMenu());return json({ok:true,status:'fast_brand_waiting_duty'});
+        }
+      }
       // V4.26.07: an assigned Brand on row 1 plus a duty on row 2 is Brand
       // sizing, not a Customer search.
       if(user&&two&&keybotFastIsAssignedBrand(two.customer,assignedProducts)){
