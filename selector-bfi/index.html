@@ -226,7 +226,7 @@ body.product-frame main{display:block;max-width:none;padding:8px}body.product-fr
   <div id="enhancedInfo" class="enhanced-info" hidden>Enhanced Curve · 60 Hz · motor-power limited</div>
   <input id="hz" type="hidden" value="50">
   <div class="motor-options">
-    <div><label for="motorEff">Motor Efficiency</label><select id="motorEff" disabled><option value="IE1">IE1</option><option value="IE2" selected>IE2</option></select></div>
+    <div><label for="motorEff">Motor Efficiency</label><select id="motorEff"><option value="IE1">IE1</option><option value="IE2" selected>IE2</option><option value="IE3">IE3</option><option value="IE4">IE4</option><option value="IE5">IE5</option></select></div>
     <div><label for="motorPhase">Motor Phase</label><select id="motorPhase"><option value="3Ph" selected>3 Phase</option><option value="1Ph">1 Phase</option></select></div>
   </div>
   <label>Motor Voltage</label>
@@ -341,7 +341,10 @@ function findMotorData(hp,effClass,phase,voltage,hz){
  return {available:true,model:row.model||"-",rpm:row.rpm==null?null:Math.round(Number(row.rpm)*Number(hz)/50),amp:Number(refAmp)*refVoltage/Number(voltage),eff100:row.eff100,eff75:row.eff75,pf100:row.pf100,pf75:row.pf75};
 }
 function updateMotorVoltageRange(){
- const phase=motorPhase.value;motorEff.value=keysuiteBfiMotorEffForPhase(phase);const eff=motorEff.value;
+ const phase=motorPhase.value;
+ for(const option of Array.from(motorEff.options||[]))option.disabled=phase==='1Ph'?option.value!=='IE1':option.value==='IE1';
+ if(phase==='1Ph')motorEff.value='IE1';else if(motorEff.value==='IE1')motorEff.value='IE2';
+ const eff=motorEff.value;
  const display=document.getElementById("motorVoltageDisplay");
  if(phase==="1Ph"){
    motorVoltage.value="240";

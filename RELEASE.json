@@ -1,18 +1,18 @@
 {
-  "version": "4.26.10",
-  "baseline": "4.26.09 FULL CLEAN",
-  "upgrade_supported_from": "4.26.09",
+  "version": "4.26.11",
+  "baseline": "4.26.10 FULL CLEAN",
+  "upgrade_supported_from": "4.26.10",
   "changes": [
-    "Enhanced PDF page 2 shows Max 3500 rpm for both Pump Speed and Motor Speed while Frequency remains separate",
-    "Standard PDF Pump Speed uses hydraulic curve rpm and Motor Speed uses motor-master rpm",
-    "KeyBot recognizes OK, O.K., OKPump, OK Pump and O.K.Pump as the configured O.K.Pump brand, including standalone Brand input",
-    "KeyBot treats VMS as a pump type and preserves the assigned selling series such as B.G.Reich CHC or M.O.S MVC",
-    "M.O.S plus VMS model input resolves to the MVC display model",
-    "KeyBot recognizes HMS as the BFI pump type for duty sizing and exact-model input",
-    "PDF pump type is VMS Pump for CHC and MVC, SVM Pump for TESK, and HMS Pump for BFI"
+    "CHC and BFI quotations adjust automatically when the selected motor IE class differs from the included motor",
+    "Motor replacement pricing subtracts the included motor raw MYR cost and adds the selected motor customer quoted price using the matching pole and closest priced HP",
+    "CHC C4 defaults to IE2, CHC C6 defaults to IE3, BFI 1-phase defaults to IE1 and BFI 3-phase defaults to IE2",
+    "BFI selection supports IE2, IE3, IE4 and IE5 for 3-phase models and retains IE1 for 1-phase models",
+    "KeyBot preserves explicitly selected BFI motor efficiency instead of resetting it to the phase default",
+    "KeyBot Fast Search accepts product information first, a blank row, then the Customer name",
+    "KeyBot recognizes BG as B.G.Reich and handles standalone OK and M.O.S aliases before Customer matching"
   ],
   "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Deploy V4.26.10 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
+  "notes": "Upgrade from V4.26.10. Upload the V4.26.11 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
 }

@@ -1522,7 +1522,7 @@ window.addEventListener('message',function(event){
    `Suction & Discharge: ${suctionDischarge}`,
    `Material: ${materialLine}`
  ].filter(Boolean);
- const pricedSelection=window.KeySuitePricing?.findPrice?.(quotationModel,{seal,elastomer,keysuite_seal:seal,keysuite_elastomer:elastomer,generation_code:p.generation_code});
+ const pricedSelection=window.KeySuitePricing?.findPrice?.(quotationModel,{seal,elastomer,keysuite_seal:seal,keysuite_elastomer:elastomer,generation_code:p.generation_code,motor_hp:Number(p.motor_hp||0),pole:Number(p.pole||2),motor_efficiency_class:p.motor_efficiency_class});
  if(!window.KeySuitePricing?.ensureQuoteableCalculation?.(pricedSelection?.calc,quotationModel))return;
  const rows=[...document.querySelectorAll('.quote-item')];
  const empty=rows.length===1&&!rows[0].querySelector('.item-model').value&&!rows[0].querySelector('.item-description').value&&!+rows[0].querySelector('.item-price').value;
@@ -1531,7 +1531,7 @@ window.addEventListener('message',function(event){
  if(bare){
    const motorDeduction=chcIe3MotorDeduction(p,'quotation');if(motorDeduction.error){if(!empty)row.remove();alert(motorDeduction.error);return}
    const barePrice=Math.max(0,Number(pricedSelection.calc.finalPrice||0)-motorDeduction.amount);row.querySelector('.item-price').value=barePrice.toFixed(2);row.dataset.pricingSource=JSON.stringify(chcBarePricingSource(pricedSelection,motorDeduction,barePrice));
- }else if(window.KeySuitePricing?.applyPriceToQuoteRow)window.KeySuitePricing.applyPriceToQuoteRow(row,quotationModel,{seal,elastomer,keysuite_seal:seal,keysuite_elastomer:elastomer,generation_code:p.generation_code});
+ }else if(window.KeySuitePricing?.applyPriceToQuoteRow)window.KeySuitePricing.applyPriceToQuoteRow(row,quotationModel,{seal,elastomer,keysuite_seal:seal,keysuite_elastomer:elastomer,generation_code:p.generation_code,motor_hp:Number(p.motor_hp||0),pole:Number(p.pole||2),motor_efficiency_class:p.motor_efficiency_class});
  // V4.15.10: pricing above intentionally uses the technical/source CHC identity.
  // After pricing, hand the finished quote row to the currently selected Selling Brand.
  // This is required for OEM: source B.G.Reich / CHC stays internal, while quotation

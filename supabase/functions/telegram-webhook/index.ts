@@ -587,6 +587,7 @@ function parsePumpOptionsText(text:any){
   if(/\bss\s*316\b|\b316\s*(?:ss|stainless)?\b/i.test(s))out.material='SS316';
   else if(/\bss\s*304\b|\b304\s*(?:ss|stainless)?\b/i.test(s))out.material='SS304';
   if(/\bie\s*5\b/i.test(s))out.motor_efficiency='IE5';else if(/\bie\s*4\b/i.test(s))out.motor_efficiency='IE4';else if(/\bie\s*3\b/i.test(s))out.motor_efficiency='IE3';else if(/\bie\s*2\b/i.test(s))out.motor_efficiency='IE2';else if(/\bie\s*1\b/i.test(s))out.motor_efficiency='IE1';
+  if(out.motor_efficiency)out.motor_efficiency_explicit=true;
   if(/\bsi?c\s*[\/-]\s*si?c\b/i.test(s))out.seal='SiC/SiC';else if(/\btc\s*[\/-]\s*tc\b/i.test(s))out.seal='TC/TC';else if(/\bcarbon\s*[\/-]\s*si?c\b/i.test(s))out.seal='Carbon/SiC';
   if(/\bepdm\b/i.test(s))out.elastomer='EPDM';else if(/\bnbr\b/i.test(s))out.elastomer='NBR';else if(/\bviton\b/i.test(s))out.elastomer='Viton';
   if(/\boval\s*(?:flange)?\b/i.test(s))out.connection='Oval Flange';else if(/\bround\s*(?:flange)?\b/i.test(s))out.connection='Round Flange';
@@ -600,7 +601,7 @@ function pumpOptions(existing:any={},qty:any=1){
     seal:['Carbon/SiC','SiC/SiC','TC/TC'].includes(String(o.seal))?String(o.seal):'Carbon/SiC',
     elastomer:['Viton','EPDM','NBR'].includes(String(o.elastomer))?String(o.elastomer):'Viton',
     connection:['Round Flange','Oval Flange'].includes(String(o.connection))?String(o.connection):'Round Flange',
-    bare_shaft:!!o.bare_shaft,qty:Math.max(1,Math.min(999,Math.trunc(Number(o.qty||qty)||1)))
+    bare_shaft:!!o.bare_shaft,motor_efficiency_explicit:!!o.motor_efficiency_explicit,qty:Math.max(1,Math.min(999,Math.trunc(Number(o.qty||qty)||1)))
   };
 }
 function mergePumpOptions(base:any,next:any,qty:any=1){return pumpOptions({...pumpOptions(base,qty),...(next&&typeof next==='object'?next:{})},qty)}
@@ -620,6 +621,8 @@ function materialKey(value:any){return String(value||'').toUpperCase().replace(/
 function applyPumpOptionsToItem(item:any,options:any){
   const oldOptions=pumpOptions(item?.options,item?.qty),o=pumpOptions(options,item?.qty),family=String(item?.family||'').toUpperCase();let model=String(item?.model||''),displayModel=String(item?.display_model||'');
   const previousMaterial=oldOptions.material;
+  const priceGroup=pumpPriceGroup(item),defaultMotorEfficiency=family==='BFI'?(/1\s*ph/i.test(String(item?.motor_phase||item?.phase||''))?'IE1':'IE2'):(family==='CHC'?(priceGroup==='CHC_G1'?'IE2':'IE3'):String(item?.motor_efficiency_class||o.motor_efficiency||'IE3').toUpperCase());
+  if(!o.motor_efficiency_explicit&&!item?.options?.motor_efficiency_explicit)o.motor_efficiency=defaultMotorEfficiency;
   if(family==='CHC'){
     model=chcVariantModel(model,o.material);
     if(displayModel)displayModel=chcVariantModel(displayModel,o.material);
@@ -629,7 +632,7 @@ function applyPumpOptionsToItem(item:any,options:any){
     const enhanced=!!item?.enhanced||/E$/i.test(identity),hintedPhase=String(item?.motor_phase||item?.phase||'');
     const phase=enhanced?'3Ph':(hintedPhase==='1Ph'||hintedPhase==='3Ph'?hintedPhase:(/T$/i.test(identity)?'3Ph':'1Ph'));
     const variant=(value:any)=>{const v=String(value||base).replace(/[TE]$/i,'').trim();return enhanced?`${v}E`:phase==='3Ph'?`${v}T`:v};
-    model=base;displayModel=variant(displayModel||base);o.motor_efficiency=phase==='1Ph'?'IE1':'IE2';
+    model=base;displayModel=variant(displayModel||base);
     (item as any).motor_phase=phase;(item as any).enhanced=enhanced;(item as any).enhanced_curve=enhanced;
   }
   const next:any={...item,model,...(displayModel?{display_model:displayModel}:{}),qty:o.qty,options:o,keysuite_material:family==='ES'?esPricingMaterial(o.material):o.material};
@@ -640,10 +643,11 @@ function applyPumpOptionsToItem(item:any,options:any){
   }else if(family==='BFI'){
     const identity=String(displayModel||item?.quotation_model||''),enhanced=!!item?.enhanced||/E$/i.test(identity),phase=enhanced?'3Ph':(String(item?.motor_phase||'1Ph')==='3Ph'?'3Ph':'1Ph'),base=String(item?.base_model||model).replace(/[TE]$/i,'').trim();
     const clean=String(displayModel||base).replace(/[TE]$/i,''),display=enhanced?`${clean}E`:phase==='3Ph'?`${clean}T`:clean;
-    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.motor_phase=phase;next.motor_efficiency_class=phase==='1Ph'?'IE1':'IE2';next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
+    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.motor_phase=phase;next.default_motor_efficiency_class=phase==='1Ph'?'IE1':'IE2';next.motor_efficiency_class=o.motor_efficiency;next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
     if(item?.pricing_model)next.pricing_model=String(item.pricing_model).replace(/[TE]$/i,'');
   }else if(family==='ES')next.pricing_material=esPricingMaterial(o.material);
-  if(previousMaterial!==o.material){delete next.unit_price;delete next.line_total;delete next.pricing;}
+  if(family==='CHC'){next.default_motor_efficiency_class=defaultMotorEfficiency;next.motor_efficiency_class=o.motor_efficiency;next.options={...o,motor_efficiency:next.motor_efficiency_class};}
+  if(previousMaterial!==o.material||String(item?.motor_efficiency_class||defaultMotorEfficiency)!==String(next.motor_efficiency_class||defaultMotorEfficiency)){delete next.unit_price;delete next.line_total;delete next.pricing;}
   return next;
 }
 function activeQuoteFromSession(session:any){
@@ -1158,13 +1162,15 @@ async function guidedOpenSelection(service:any,telegramToken:string,companyId:st
 
 
 function keybotFastLines(text:any){const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);return lines.length>=2?{customer:lines[0],product:lines.slice(1).join(' ')}:null}
+function keybotFastProductCustomerRows(text:any){const raw=String(text||'').replace(/\r/g,'').trim(),parts=raw.split(/\n[ \t]*\n/);if(parts.length<2)return null;const product=String(parts.shift()||'').split('\n').map(x=>x.trim()).filter(Boolean).join(' '),customer=parts.join(' ').split('\n').map(x=>x.trim()).filter(Boolean).join(' ');return product&&customer?{product,customer}:null}
 function keybotFastLooksLikePump(text:any){return /\b(?:CHC|VMS|SVM|BFI|HMS|ES)\b/i.test(String(text||''))}
 function keybotFastLooksLikeExactPumpModel(text:any){const raw=String(text||'');return /\b(?:BFI|HMS)\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?\s*[TE]?\b/i.test(raw)||/\b(?:CHC|VMS|SVM|ES)\s+\d{1,3}\s*-\s*\d{1,3}(?:\s*-\s*\d{1,2})?(?:\s*-\s*\d{1,2})?(?:\s+[24]\s*P(?:OLE)?)?\b/i.test(raw)}
 function keybotFastRequestedDuty(text:any){const parsed=smartQuoteRequest(text),q=Number(parsed.flow_m3h||0),h=Number(parsed.head_m||0);return q>0&&h>0?{flow_m3h:q,head_m:h,duty_text:dutyDisplay(String(text||''),q,h).duty_text}:null}
-function keybotFastBrandKey(value:any){const raw=String(value||'').trim(),compact=raw.toLowerCase().replace(/[^a-z0-9]+/g,'');if(compact==='mos')return 'mos';if(compact==='ok'||compact==='okpump')return 'ok';return cleanSearch(raw)}
-function keybotFastBrandAliases(value:any){const raw=String(value||'').trim(),key=keybotFastBrandKey(raw);if(key==='mos')return guidedUnique([raw,'M.O.S','MOS','Mos']);if(key==='ok')return guidedUnique([raw,'O.K.Pump','O.K. Pump','O.K.','OKPump','OK Pump','O K Pump','OK']);return [raw]}
+function keybotFastBrandKey(value:any){const raw=String(value||'').trim(),compact=raw.toLowerCase().replace(/[^a-z0-9]+/g,'');if(compact==='mos')return 'mos';if(compact==='ok'||compact==='okpump')return 'ok';if(compact==='bg'||compact==='bgreich')return 'bgreich';return cleanSearch(raw)}
+function keybotFastBrandAliases(value:any){const raw=String(value||'').trim(),key=keybotFastBrandKey(raw);if(key==='mos')return guidedUnique([raw,'M.O.S','MOS','Mos']);if(key==='ok')return guidedUnique([raw,'O.K.Pump','O.K. Pump','O.K.','OKPump','OK Pump','O K Pump','OK']);if(key==='bgreich')return guidedUnique([raw,'B.G.Reich','B.G. Reich','BG Reich','BG']);return [raw]}
 function keybotFastProductSeriesKey(product:any){return cleanSearch(product?.brand_series||product?.product_label||'')}
 function keybotFastIsAssignedBrand(text:any,products:any[]){const key=keybotFastBrandKey(text);return !!key&&(products||[]).some((p:any)=>keybotFastBrandKey(p?.brand_name)===key)}
+function keybotFastIsKnownBrand(text:any,products:any[]){const key=keybotFastBrandKey(text);return key==='ok'||key==='mos'||key==='bgreich'||keybotFastIsAssignedBrand(text,products)}
 function keybotFastRequestProductScope(input:any,products:any[]){
   const raw=String(input||''),stripped=keybotFastStripBrand(raw,products),query=String(stripped.query||raw),brandKey=keybotFastBrandKey(stripped.brand),chcScope=quoteChcScopeFromText(query);let series='';
   if(/\bCHC\b/i.test(query))series='CHC';else if(/\bSVM\b/i.test(query))series='SVM';else if(/\bVMS\b/i.test(query))series='VMS';else if(/\bHMS\b/i.test(query))series='HMS';else if(/\bBFI\b/i.test(query))series='BFI';else if(/\bES\b/i.test(query))series='ES';
@@ -1218,7 +1224,7 @@ async function keybotFastOpenPreparedMatch(service:any,telegramToken:string,comp
   }
   return await keybotFastOpenMatch(service,telegramToken,companyId,chatId,senderId,session,customer,match,context);
 }
-function keybotFastStripBrand(text:any,products:any[]){let raw=String(text||'').trim(),picked='';const brands=guidedUnique((products||[]).map((p:any)=>String(p.brand_name||'').trim())),aliases=brands.flatMap((brand:any)=>keybotFastBrandAliases(brand).map((alias:any)=>({brand,alias}))).sort((a:any,b:any)=>b.alias.length-a.alias.length);for(const x of aliases){const esc=String(x.alias).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),re=new RegExp(`^${esc}(?:\\s*[-,;:/·]\\s*|\\s+)`,'i');if(re.test(raw)){picked=x.brand;raw=raw.replace(re,'').trim();break}}return {brand:picked,query:raw}}
+function keybotFastStripBrand(text:any,products:any[]){let raw=String(text||'').trim(),picked='';const brands=guidedUnique((products||[]).map((p:any)=>String(p.brand_name||'').trim())),configured=brands.flatMap((brand:any)=>keybotFastBrandAliases(brand).map((alias:any)=>({brand,alias}))),builtIn=[...keybotFastBrandAliases('B.G.Reich').map((alias:any)=>({brand:'B.G.Reich',alias})),...keybotFastBrandAliases('O.K.Pump').map((alias:any)=>({brand:'O.K.Pump',alias})),...keybotFastBrandAliases('M.O.S').map((alias:any)=>({brand:'M.O.S',alias}))],aliases=[...configured,...builtIn].sort((a:any,b:any)=>b.alias.length-a.alias.length);for(const x of aliases){const esc=String(x.alias).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),re=new RegExp(`^${esc}(?:\\s*[-,;:/·]\\s*|\\s+)`,'i');if(re.test(raw)){picked=x.brand;raw=raw.replace(re,'').trim();break}}return {brand:picked,query:raw}}
 async function keybotFastModelMatches(service:any,companyId:string,products:any[],input:any){
   const scoped=keybotFastStripBrand(input,products),requestScope=keybotFastRequestProductScope(input,products),bfiDirect=parseDirectPumpModel(scoped.query)?.family==='BFI'?parseDirectPumpModel(scoped.query):null,bfiSuffix=String((String(bfiDirect?.model||'').match(/([TE])$/i)||[])[1]||'').toUpperCase(),poleMatch=String(scoped.query||'').match(/\b([24])\s*P(?:OLE)?\b/i),requestedPole=Number(poleMatch?.[1]||0),modelQuery=bfiDirect?bfiBaseModelName(bfiDirect.model):String(scoped.query||'').replace(/\b[24]\s*P(?:OLE)?\b/ig,' ').replace(/\s+/g,' ').trim(),brandKey=keybotFastBrandKey(scoped.brand),query=cleanSearch(modelQuery),exact:any[]=[],partial:any[]=[];if(!query)return [];
   const esDb:any=(globalThis as any).ES_SELECTOR_DB;
@@ -1248,7 +1254,7 @@ async function keybotFastModelMatches(service:any,companyId:string,products:any[
     }
     if(requestedPole)continue;
     let rows:any[]=[];try{rows=await guidedCatalogRows(service,product)}catch(_){continue}
-    for(const r of rows){let master=String(r.model||'').trim();if(!master)continue;const display=guidedAliasModel(master,presentation,group)||master,matchMaster=group==='BFI'?bfiBaseModelName(master):master,matchDisplay=group==='BFI'?bfiBaseModelName(display):display,genericVms=['CHC_G1','CHC_G2'].includes(group)?matchMaster.replace(/^(?:CHCS|CHCN|CHC)\b/i,'VMS'):'',labels=[matchDisplay,matchMaster,genericVms].filter(Boolean);let score=99;for(const label of labels){const k=cleanSearch(label);if(k===query)score=Math.min(score,0);else if(k.startsWith(query))score=Math.min(score,1);else if(k.includes(query))score=Math.min(score,2)}if(score>2)continue;const selected={kind:'model',value:String(r.id||master),label:matchDisplay,meta:{id:String(r.id||''),master_model:matchMaster,display_model:matchDisplay,...(group==='BFI'?{bfi_fast_suffix:bfiSuffix}:{})}},showGeneration=keybotFastBrandKey(product?.brand_name)==='b g reich',chcGenLabel=showGeneration?(group==='CHC_G1'?'CHC C4':group==='CHC_G2'?'CHC C6':''):'',entry={product,selected,path:[selected],label:`${String(product.brand_name||'Brand')} - ${chcGenLabel?`${chcGenLabel} - `:''}${matchDisplay}`,score};(score===0?exact:partial).push(entry)}
+    for(const r of rows){let master=String(r.model||'').trim();if(!master)continue;const display=guidedAliasModel(master,presentation,group)||master,matchMaster=group==='BFI'?bfiBaseModelName(master):master,matchDisplay=group==='BFI'?bfiBaseModelName(display):display,genericVms=['CHC_G1','CHC_G2'].includes(group)?matchMaster.replace(/^(?:CHCS|CHCN|CHC)\b/i,'VMS'):'',labels=[matchDisplay,matchMaster,genericVms].filter(Boolean);let score=99;for(const label of labels){const k=cleanSearch(label);if(k===query)score=Math.min(score,0);else if(k.startsWith(query))score=Math.min(score,1);else if(k.includes(query))score=Math.min(score,2)}if(score>2)continue;const selected={kind:'model',value:String(r.id||master),label:matchDisplay,meta:{id:String(r.id||''),master_model:matchMaster,display_model:matchDisplay,...(group==='BFI'?{bfi_fast_suffix:bfiSuffix}:{})}},showGeneration=keybotFastBrandKey(product?.brand_name)==='bgreich',chcGenLabel=showGeneration?(group==='CHC_G1'?'CHC C4':group==='CHC_G2'?'CHC C6':''):'',entry={product,selected,path:[selected],label:`${String(product.brand_name||'Brand')} - ${chcGenLabel?`${chcGenLabel} - `:''}${matchDisplay}`,score};(score===0?exact:partial).push(entry)}
   }
   const arr=exact.length?exact:partial;const seen=new Set<string>();return arr.sort((a:any,b:any)=>a.score-b.score||guidedNaturalCompare(a.label,b.label)).filter((x:any)=>{const k=[x.product?.key,x.selected?.meta?.master_model,x.selected?.meta?.pole||0].join('|');if(seen.has(k))return false;seen.add(k);return true}).slice(0,12)
 }
@@ -1521,6 +1527,39 @@ async function requireCustomerPriceAssignment(service:any,customerId:string,user
   if(row?.allowed!==true)throw new Error(KEYAI_PRICE_NOT_ASSIGNED);
   return row;
 }
+function pumpIncludedMotorEfficiency(item:any,priceGroup:string){
+  const family=String(item?.family||'').toUpperCase();
+  if(family==='BFI')return /1\s*ph/i.test(String(item?.motor_phase||item?.phase||''))?'IE1':'IE2';
+  if(family==='CHC')return normalizeKeyAiPriceGroup(priceGroup)==='CHC_G1'?'IE2':'IE3';
+  return String(item?.default_motor_efficiency_class||item?.motor_efficiency_class||'IE3').toUpperCase();
+}
+function motorPriceCandidates(row:any,rates:any){
+  const rarity=pricingRarity(row?.rarity||'common');return [
+    {currency:'USD',sourcePrice:Number(row?.price_usd||0),multiplier:Number(rates?.USD||1),rarity},
+    {currency:'RMB',sourcePrice:Number(row?.price_rmb||0),multiplier:Number(rates?.RMB||1),rarity},
+    {currency:'MYR',sourcePrice:Number(row?.price_myr||0),multiplier:1,rarity}
+  ];
+}
+function rawMotorCost(candidates:any[]){
+  const rows=(candidates||[]).filter(row=>Number(row?.sourcePrice)>0).map(row=>({...row,baseMyr:Number(row.sourcePrice)*Number(row.multiplier||1)}));
+  if(!rows.length)return null;return rows.reduce((best,row)=>!best||row.baseMyr>best.baseMyr?row:best,null);
+}
+function nearestPricedMotor(rows:any[],efficiency:string,hp:number,pole:number,rates:any){
+  return (rows||[]).filter(row=>String(row?.efficiency_class||'').toUpperCase()===efficiency&&Number(row?.pole||0)===pole&&motorPriceCandidates(row,rates).some(x=>Number(x.sourcePrice)>0)).sort((a,b)=>Math.abs(Number(a.hp||0)-hp)-Math.abs(Number(b.hp||0)-hp)||(Number(a.hp||0)<hp?1:0)-(Number(b.hp||0)<hp?1:0)||Number(a.hp||0)-Number(b.hp||0))[0]||null;
+}
+async function pumpMotorReplacementAdjustment(service:any,item:any,priceGroup:string,basePrice:number,category:any,settings:any,customerRates:any,ctx:any){
+  const family=String(item?.family||'').toUpperCase(),bare=!!item?.options?.bare_shaft;if(!['CHC','BFI'].includes(family)||bare)return null;
+  const included=pumpIncludedMotorEfficiency(item,priceGroup),selected=String(item?.options?.motor_efficiency||item?.motor_efficiency_class||included).toUpperCase();if(selected===included)return null;
+  const hp=Number(item?.motor_hp||0),pole=Math.max(2,Number(item?.pole||2)||2);if(!(hp>0))throw new Error('Motor efficiency could not be changed because the pump motor HP is unavailable.');
+  const motorRes=await service.from('ks_products_motor').select('*').eq('active',true).eq('pole',pole).in('efficiency_class',[included,selected]).limit(1000);if(motorRes.error)throw new Error(`Motor prices could not be loaded: ${motorRes.error.message||motorRes.error}`);
+  const rates=productRates(settings,'MOTOR'),includedRow=nearestPricedMotor(motorRes.data||[],included,hp,pole,rates),selectedRow=nearestPricedMotor(motorRes.data||[],selected,hp,pole,rates);
+  if(!includedRow)throw new Error(`No priced ${included} Motor is available near ${inputNumber(hp)} HP / ${pole} Pole for the included-motor deduction.`);
+  if(!selectedRow)throw new Error(`No priced ${selected} Motor is available near ${inputNumber(hp)} HP / ${pole} Pole for the replacement.`);
+  const includedCost=rawMotorCost(motorPriceCandidates(includedRow,rates));if(!includedCost)throw new Error(`No source cost is available for ${includedRow.model||included+' Motor'}.`);
+  const replacementCalc=calculateQuotedPrice(motorPriceCandidates(selectedRow,rates),selectedRow.rarity||'common',pricingRule(category,'MOTOR'),customerRates,ctx);if(!replacementCalc)throw new Error(`No source price is available for ${selectedRow.model||selected+' Motor'}.`);
+  const unrounded=Math.max(0,Number(basePrice||0)-Number(includedCost.baseMyr||0)+Number(replacementCalc.finalPrice||0)),finalPrice=Math.ceil((unrounded-1e-9)/10)*10;
+  return {finalPrice,included_efficiency:included,selected_efficiency:selected,requested_hp:hp,pole,included_motor_id:String(includedRow.id||''),included_motor_model:String(includedRow.model||''),included_motor_hp:Number(includedRow.hp||0),included_motor_cost_myr:Number(includedCost.baseMyr||0),replacement_motor_id:String(selectedRow.id||''),replacement_motor_model:String(selectedRow.model||''),replacement_motor_hp:Number(selectedRow.hp||0),replacement_motor_quoted_price:Number(replacementCalc.finalPrice||0),unrounded_price:unrounded};
+}
 async function quotePumpForCustomer(service:any,customerId:string,item:any,keySuiteUserEmail:string,pricingOverride:any={}){
   const customerRes=await service.from('ks_customers').select('id,company_name,pricing_category_id,distance_km,status').eq('id',customerId).eq('status','active').maybeSingle();
   if(customerRes.error||!customerRes.data)throw new Error('Selected customer could not be loaded for pricing.');const customer:any=customerRes.data;
@@ -1566,7 +1605,8 @@ async function quotePumpForCustomer(service:any,customerId:string,item:any,keySu
     candidates=[{currency:'USD',sourcePrice:Number(variant.priceUsd||0),multiplier:rates.USD,rarity},{currency:'RMB',sourcePrice:Number(variant.priceRmb||0),multiplier:rates.RMB,rarity},{currency:'MYR',sourcePrice:Number(variant.priceMyr||0),multiplier:1,rarity}];
   }else throw new Error('Pricing is currently enabled for CHC, BFI and ES pump items only.');
   const calc=calculateQuotedPrice(candidates,rarity,rule,companyRates,ctx);if(!calc)throw new Error(`No valid ${family} USD, RMB or MYR source price is available for ${item?.model||'this pump'}.`);
-  return {...item,unit_price:Number(calc.finalPrice||0),line_total:Number(calc.finalPrice||0)*Math.max(1,Number(item?.qty||1)),pricing:{product_family:family,product_id:productId,material,category_id:String(category.id||''),category_name:String(category.category_name||''),price_group:String(priceAssignment.price_group||priceGroup),price_key:String(priceAssignment.price_key||''),brand_id:String(priceAssignment.brand_id||''),source_currency:calc.sourceCurrency,source_price:calc.sourcePrice,currency_multiplier:calc.multiplier,base_myr:calc.baseMyr,rarity:calc.rarity,fixed_price:!!calc.fixedPrice,fuel_charge:Number(calc.fuelCharge||0),calculated_price:Number(calc.finalPrice||0)}};
+  const motorAdjustment=await pumpMotorReplacementAdjustment(service,item,priceGroup,Number(calc.finalPrice||0),category,settings,companyRates,ctx),finalPrice=Number((motorAdjustment?.finalPrice??calc.finalPrice)||0);
+  return {...item,motor_efficiency_class:String(item?.options?.motor_efficiency||item?.motor_efficiency_class||pumpIncludedMotorEfficiency(item,priceGroup)),unit_price:finalPrice,line_total:finalPrice*Math.max(1,Number(item?.qty||1)),pricing:{product_family:family,product_id:productId,material,category_id:String(category.id||''),category_name:String(category.category_name||''),price_group:String(priceAssignment.price_group||priceGroup),price_key:String(priceAssignment.price_key||''),brand_id:String(priceAssignment.brand_id||''),source_currency:calc.sourceCurrency,source_price:calc.sourcePrice,currency_multiplier:calc.multiplier,base_myr:calc.baseMyr,rarity:calc.rarity,fixed_price:!!calc.fixedPrice,fuel_charge:Number(calc.fuelCharge||0),base_pump_quoted_price:Number(calc.finalPrice||0),...(motorAdjustment?{motor_replacement:motorAdjustment}:{}),calculated_price:finalPrice}};
 }
 async function quoteGwsForCustomer(service:any,customerId:string,product:any,qty:any,keySuiteUserEmail:string){
   const customerRes=await service.from('ks_customers').select('id,company_name,pricing_category_id,distance_km,status').eq('id',customerId).eq('status','active').maybeSingle();
@@ -1899,7 +1939,7 @@ async function guidedCompletePump(service:any,telegramToken:string,companyId:str
   if(action==='price'&&!customerId)throw new Error('Customer is required before checking price.');
   if(!(q>0)||!(h>0)){const step='guided_waiting_duty',saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step,selected_customer_id:customerId||null,context:{...c,keysuite_user_email:user.email,...(customerName?{customer_name:customerName}:{}),guided_product:product,guided_action:action,guided_pending_request:merged}});await telegramSend(telegramToken,chatId,`${customerPrefix}Product: ${guidedProductButtonLabel(product)}\n\nPlease enter Flow @ Head.\nExample: 30m3/hr @ 80m`,guidedInputNavMenu());return saved}
   let pole=Number(merged.pole||0);if(family==='ES'&&![2,4].includes(pole)){const saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_waiting_es_pole',flow_m3h:q,head_m:h,selected_customer_id:customerId||null,context:{...c,keysuite_user_email:user.email,...(customerName?{customer_name:customerName}:{}),guided_product:product,guided_action:action,guided_pending_request:{...merged,flow_m3h:q,head_m:h}}});await telegramSend(telegramToken,chatId,'Choose ES motor speed:',telegramReplyKeyboard([['ES 2 Pole','ES 4 Pole'],['⬅️ Back','🔄 New Request']]));return saved}
-  try{const forcedModel=String(merged?.force_model||'').trim();let item:any=selectPumpSummary(family,q,h,pole,forcedModel);item=guidedApplyProductIdentity(applyPumpOptionsToItem({...item,qty:Math.max(1,Number(merged.qty||1))},mergePumpOptions({},merged.options,merged.qty||1)),product);if(action==='price')item=await quotePumpForCustomer(service,customerId,item,String(user.email||''));const nextStep=action==='price'?'guided_price_result':action==='curve'?'guided_curve_result':'guided_selection_result',saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:nextStep,flow_m3h:q,head_m:h,selected_customer_id:customerId||null,context:{...c,keysuite_user_email:user.email,...(customerName?{customer_name:customerName}:{}),guided_product:product,guided_action:action,guided_pending_request:{...merged,flow_m3h:q,head_m:h,pole},pending_item:item}});
+  try{const forcedModel=String(merged?.force_model||'').trim();let item:any=selectPumpSummary(family,q,h,pole,forcedModel);item=applyPumpOptionsToItem(guidedApplyProductIdentity({...item,qty:Math.max(1,Number(merged.qty||1))},product),mergePumpOptions({},merged.options,merged.qty||1));if(action==='price')item=await quotePumpForCustomer(service,customerId,item,String(user.email||''));const nextStep=action==='price'?'guided_price_result':action==='curve'?'guided_curve_result':'guided_selection_result',saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:nextStep,flow_m3h:q,head_m:h,selected_customer_id:customerId||null,context:{...c,keysuite_user_email:user.email,...(customerName?{customer_name:customerName}:{}),guided_product:product,guided_action:action,guided_pending_request:{...merged,flow_m3h:q,head_m:h,pole},pending_item:item}});
     if(action==='curve'){const duty=`${oneDecimal(q)} m³/hr @ ${oneDecimal(h)} Mtr`,curveIdentity:any=await guidedCurveDisplayIdentity(service,companyId,product,String(item?.model||''),String(item?.display_model||''));curveIdentity.material=pumpOptions(item.options,item.qty).material;const pdf=await generateCurvePdf(family,q,h,duty,env('KEYSUITE_PUBLIC_URL'),family==='ES'?pole:0,forcedModel,curveIdentity);await telegramSendDocument(telegramToken,chatId,pdf.bytes,pdf.filename,`${guidedProductButtonLabel(product)} curve ready\n${duty}\nSelected: ${pdf.model}`);await telegramSend(telegramToken,chatId,`${customerPrefix}${quotationResultText(item)}`,guidedResultMenu(true));return saved}
     if(action==='price'){await telegramSend(telegramToken,chatId,`Customer: ${customerName}\n\n${quotationResultText(item)}`,guidedPriceResultMenu(true));return saved}
     await telegramSend(telegramToken,chatId,`${customerPrefix}${quotationResultText(item)}\n\nChoose action:`,guidedProductActionMenu(family==='ES'));return await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_product_action',flow_m3h:q,head_m:h,selected_customer_id:customerId||null,context:{...sessionContext(saved),pending_item:item,guided_product:product,guided_pending_request:{...merged,flow_m3h:q,head_m:h,pole}}});
@@ -1948,7 +1988,7 @@ function customerHintFromMessage(text:any,req:any={}){
 function simplePumpFamilyCode(req:any){const c=String(req?.family_code||'').toUpperCase();return ['CHC','BFI','ES2','ES4','ES'].includes(c)?c:''}
 function simplePumpMissing(req:any){if(req?.direct_model)return '';if(!(Number(req?.flow_m3h)>0)||!(Number(req?.head_m)>0))return 'duty';const c=simplePumpFamilyCode(req);if(!c||c==='ES')return 'family';return ''}
 function simpleRequestHasTechnical(req:any){return !!(req?.product_type||req?.family_code||req?.direct_model||req?.system_type||Number(req?.flow_m3h)>0||Number(req?.head_m)>0||req?.tank_model_hint||Number(req?.tank_size_litres)>0||Number(req?.tank_pressure_bar)>0)}
-function simpleRequestMenuText(){return 'Fast Search\n\nType a model directly:\nCHC 10-100\nBFI 8-3\nB.G.Reich CHC 10-100\nES 32-20 4P\n\nFor Customer + Product, use 2 rows:\nKey\nCHC 30m3/hr @ 90m\n\nRow 1 = Company / Customer\nRow 2 = Brand / Series / Model / Duty\n\nYou can still use Customer, Product or Selection below.'}
+function simpleRequestMenuText(){return 'Fast Search\n\nEnter Brand / Series / Model / Duty first.\nLeave one empty row before the Company name.\n\nExample 1:\nBG\n30m3/hr @ 30mtr\n\nKeylargo\n\nExample 2:\n30m3/hr @ 30mtr\n\nKeylargo\n\nWithout a Company row, KeyBot searches your assigned products.\n\nYou can still use Customer, Product or Selection below.'}
 async function sendSimpleCurve(service:any,telegramToken:string,companyId:string,chatId:string,senderId:string,session:any,request:any){
   const req=mergeQuoteRequest(sessionContext(session).pending_request,request);req.product_type='pump';
   if(!req.chc_scope){const scope=quoteChcScopeFromText(req.raw_input);if(scope)req.chc_scope=scope;}
@@ -2260,19 +2300,29 @@ Deno.serve(async(req)=>{
 
     // V4.19.11 Fast Search: exact model recognition runs before hydraulic-number parsing; sizing asks Flow & Head together.
     if(!callbackQuery&&text&&!menuText){
-      const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),two=keybotFastLines(rawTelegramText),assignedProducts=user?await guidedUserAvailableProducts(service,keySuiteCompanyId,user):[];
+      const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),structured=keybotFastProductCustomerRows(rawTelegramText),two=keybotFastLines(rawTelegramText),assignedProducts=user?await guidedUserAvailableProducts(service,keySuiteCompanyId,user):[];
+      // Preferred unambiguous format: Product request first, one blank row,
+      // then Company / Customer. Product request may occupy one or more rows.
+      if(user&&structured){
+        const parsed=smartQuoteRequest(structured.product),scope=keybotFastRequestProductScope(structured.product,assignedProducts),allAssignedDuty=!scope.recognized&&Number(parsed.flow_m3h)>0&&Number(parsed.head_m)>0,matches=await findGuidedCustomers(service,keySuiteCompanyId,user,structured.customer);
+        if(!matches.length){await telegramSend(telegramToken,chatId,`No Customer matched “${structured.customer}”.`,mainMenuMarkup());return json({ok:true,status:'fast_product_customer_no_match'})}
+        const exact=matches.find((x:any)=>cleanSearch(x.company_name)===cleanSearch(structured.customer)),chosen=exact||matches.length===1?exact||matches[0]:null;
+        if(chosen){session=await keybotFastHandleProduct(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,user,chosen,structured.product,allAssignedDuty);return json({ok:true,status:'fast_product_customer'})}
+        const choices=matches.map((x:any)=>({id:String(x.id),label:String(x.company_name).slice(0,60)}));session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'guided',step:'guided_fast_customer_choice',selected_customer_id:null,context:{keysuite_user_email:user.email,guided_fast_customer_choices:choices,guided_fast_product_text:structured.product,guided_fast_all_assigned_duty:allAssignedDuty}});await telegramSend(telegramToken,chatId,`Customer matches for “${structured.customer}”:`,telegramReplyKeyboard([...choices.map((x:any)=>[x.label]),['⬅️ Back','🔄 New Request']]));return json({ok:true,status:'fast_product_customer_choice',count:choices.length})
+      }
       // A Brand alias entered by itself starts a Brand-scoped sizing request.
       // This prevents short aliases such as OK from falling through to Customer search.
-      if(user&&!two&&keybotFastExactMayOverrideSession(session)&&keybotFastIsAssignedBrand(rawTelegramText,assignedProducts)){
+      if(user&&!two&&keybotFastExactMayOverrideSession(session)&&keybotFastIsKnownBrand(rawTelegramText,assignedProducts)){
         const brandKey=keybotFastBrandKey(rawTelegramText),wanted=assignedProducts.filter((p:any)=>p.has_curve===true&&keybotFastBrandKey(p.brand_name)===brandKey);
         if(wanted.length){
           const brand=String(wanted[0]?.brand_name||rawTelegramText).trim(),saved=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'guided',step:'guided_selection_waiting_duty',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{keysuite_user_email:user.email,guided_selection_products:wanted,guided_selection_keys:wanted.map((p:any)=>String(p.key)),guided_selection_candidates:null,guided_product:null,pending_item:null}});
           await telegramSend(telegramToken,chatId,`Brand: ${brand}\n\nEnter Flow @ Head.\nExample: 10m3/hr @ 70m`,guidedInputNavMenu());return json({ok:true,status:'fast_brand_waiting_duty'});
         }
+        if(brandKey==='ok'||brandKey==='mos'){await telegramSend(telegramToken,chatId,`${brandKey==='ok'?'O.K.Pump':'M.O.S'} is not assigned to this KeySuite user/Role.`,mainMenuMarkup());return json({ok:true,status:'fast_brand_not_assigned'});}
       }
       // V4.26.07: an assigned Brand on row 1 plus a duty on row 2 is Brand
       // sizing, not a Customer search.
-      if(user&&two&&keybotFastIsAssignedBrand(two.customer,assignedProducts)){
+      if(user&&two&&keybotFastIsKnownBrand(two.customer,assignedProducts)){
         const parsed=smartQuoteRequest(two.product);if(Number(parsed.flow_m3h)>0&&Number(parsed.head_m)>0){session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}})||session;session=await keybotFastHandleProduct(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,user,null,rawTelegramText);return json({ok:true,status:'fast_brand_duty'});}
       }
       // Bare Flow @ Head searches every curve-enabled Brand / Series assigned to
@@ -2297,7 +2347,7 @@ Deno.serve(async(req)=>{
         const parsed=smartQuoteRequest(rawTelegramText),requestScope=keybotFastRequestProductScope(rawTelegramText,assignedProducts);if(requestScope.recognized&&Number(parsed.flow_m3h)>0&&Number(parsed.head_m)>0){session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}})||session;session=await keybotFastHandleProduct(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,user,null,rawTelegramText);return json({ok:true,status:'fast_series_duty'});}
       }
     }
-    if(!callbackQuery&&session?.mode==='guided'&&session?.step==='guided_fast_customer_choice'&&text){const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),c=sessionContext(session),choices=Array.isArray(c.guided_fast_customer_choices)?c.guided_fast_customer_choices:[],pick=choices.find((x:any)=>cleanSearch(x.label)===cleanButton);if(user&&pick){const customer=await guidedAllowedCustomerById(service,keySuiteCompanyId,user,String(pick.id));if(customer){session=await keybotFastHandleProduct(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,user,customer,c.guided_fast_product_text||'');return json({ok:true,status:'fast_customer_selected'})}}await telegramSend(telegramToken,chatId,'Choose one of the shown Customers.',telegramReplyKeyboard([...choices.map((x:any)=>[x.label]),['⬅️ Back','🔄 New Request']]));return json({ok:true,status:'fast_customer_waiting'})}
+    if(!callbackQuery&&session?.mode==='guided'&&session?.step==='guided_fast_customer_choice'&&text){const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),c=sessionContext(session),choices=Array.isArray(c.guided_fast_customer_choices)?c.guided_fast_customer_choices:[],pick=choices.find((x:any)=>cleanSearch(x.label)===cleanButton);if(user&&pick){const customer=await guidedAllowedCustomerById(service,keySuiteCompanyId,user,String(pick.id));if(customer){session=await keybotFastHandleProduct(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,user,customer,c.guided_fast_product_text||'',!!c.guided_fast_all_assigned_duty);return json({ok:true,status:'fast_customer_selected'})}}await telegramSend(telegramToken,chatId,'Choose one of the shown Customers.',telegramReplyKeyboard([...choices.map((x:any)=>[x.label]),['⬅️ Back','🔄 New Request']]));return json({ok:true,status:'fast_customer_waiting'})}
     if(!callbackQuery&&session?.mode==='guided'&&session?.step==='guided_fast_model_choice'&&text){const c=sessionContext(session),matches=Array.isArray(c.guided_fast_matches)?c.guided_fast_matches:[],pick=matches.find((x:any)=>cleanSearch(x.label)===cleanButton);if(pick){const user=await linkedKeySuiteUser(service,keySuiteCompanyId,senderId),customer=session.selected_customer_id&&user?await guidedAllowedCustomerById(service,keySuiteCompanyId,user,String(session.selected_customer_id)):null;session=await keybotFastOpenPreparedMatch(service,telegramToken,keySuiteCompanyId,chatId,senderId,session,customer,pick,c);return json({ok:true,status:pick?.keybot_fast_choose_pole?'fast_model_pole':'fast_model_selected'})}await telegramSend(telegramToken,chatId,'Choose one of the shown Brand / Model matches.',keybotFastMatchKeyboard(matches));return json({ok:true,status:'fast_model_waiting'})}
 
     if(menuText||callbackData==='menu:home'){
@@ -2736,7 +2786,7 @@ ${keyplcBomText(bom)}`,keyplcManifoldMenu(bom));return json({ok:true,status:'key
     if(!callbackQuery&&String(session?.step||'').startsWith('pump_option_')&&text){
       const c=sessionContext(session),item=c.pending_item;if(!item)return json({ok:true,status:'pump_option_no_item'});let o=pumpOptions(item.options,item.qty),accepted=true;
       if(session.step==='pump_option_material'){const map:any={standard:'Standard',ss304:'SS304',ss316:'SS316'};if(!map[cleanButton])accepted=false;else o.material=map[cleanButton]}
-      else if(session.step==='pump_option_motor'){const v=String(text||'').toUpperCase().replace(/\s+/g,'');if(!['IE2','IE3','IE4','IE5'].includes(v))accepted=false;else o.motor_efficiency=v}
+      else if(session.step==='pump_option_motor'){const v=String(text||'').toUpperCase().replace(/\s+/g,'');if(!['IE2','IE3','IE4','IE5'].includes(v))accepted=false;else{o.motor_efficiency=v;o.motor_efficiency_explicit=true}}
       else if(session.step==='pump_option_seal'){const map:any={'carbon sic':'Carbon/SiC','sic sic':'SiC/SiC','tc tc':'TC/TC'};if(!map[cleanButton])accepted=false;else o.seal=map[cleanButton]}
       else if(session.step==='pump_option_elastomer'){const map:any={viton:'Viton',epdm:'EPDM',nbr:'NBR'};if(!map[cleanButton])accepted=false;else o.elastomer=map[cleanButton]}
       else if(session.step==='pump_option_connection'){const map:any={'round flange':'Round Flange','oval flange':'Oval Flange'};if(!map[cleanButton])accepted=false;else o.connection=map[cleanButton]}
