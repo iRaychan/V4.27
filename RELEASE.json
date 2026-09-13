@@ -1,0 +1,19 @@
+{
+  "version": "4.26.09",
+  "baseline": "4.26.08 FULL CLEAN",
+  "upgrade_supported_from": "4.26.08",
+  "changes": [
+    "Exact BFI model plus duty input plots the requested duty point on the exact model curve after phase resolution",
+    "Bare Flow and Head input searches every curve-enabled Brand and Series assigned to the KeySuite user",
+    "Broad assigned-product results exclude models without an input price and retain Common priced models only",
+    "Broad results keep the closest suitable model per assigned Brand and Series to avoid near-duplicate output",
+    "KeyBot recognizes MOS, Mos and M.O.S as the configured M.O.S brand",
+    "KeyBot recognizes OK, OK Pump and O.K.Pump as the configured O.K.Pump brand",
+    "PDF page 2 uses VMS Pump for OEM CHC-family products and SVM Pump for TESK",
+    "PDF Pump Speed uses hydraulic rpm and Motor Speed uses motor-master rpm without repeating Hz"
+  ],
+  "new_database_migration_required": false,
+  "edge_function_deploy_required": true,
+  "edge_function": "telegram-webhook",
+  "notes": "Deploy V4.26.09 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
+}
