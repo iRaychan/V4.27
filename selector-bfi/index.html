@@ -799,6 +799,21 @@ function keychcBepInfo(candidate){
 function keychcMostSuitableCompare(a,b){
  return KEYSUITE_BFI_CORE.mostSuitableCompare(a,b,Number(a?._keysuiteDutyFlow||b?._keysuiteDutyFlow||selectionState.q));
 }
+function keybfiPriceCatalogue(){
+ try{const live=window.parent&&window.parent!==window?window.parent.KEYSUITE_SECURE_DATA?.bfiProducts:null;if(Array.isArray(live)&&live.length)return live}catch(_){}
+ return Array.isArray(DB.models)?DB.models:[];
+}
+function keybfiBasePriceModel(value){return String(value||'').trim().replace(/[TE]+$/i,'').toLowerCase()}
+function keybfiHasInputPrice(value){
+ const wanted=keybfiBasePriceModel(value?.model||value),row=keybfiPriceCatalogue().find(x=>keybfiBasePriceModel(x?.model||x?.id)===wanted);if(!row)return false;
+ const books=row.pricesByCurrency&&typeof row.pricesByCurrency==='object'?row.pricesByCurrency:{};
+ return Object.values(books).some(book=>book&&typeof book==='object'&&Object.values(book).some(price=>Number(price)>0));
+}
+function keybfiApplyStockPriority(candidates,hotAlreadyAvailable=false){
+ const rows=Array.isArray(candidates)?candidates.filter(Boolean):[],hot=rows.filter(keybfiHasInputPrice);
+ if(hotAlreadyAvailable||hot.length)return hot.map(x=>({...x,_keysuiteColdItem:false,_keysuitePriceAvailable:true}));
+ return rows.map(x=>({...x,_keysuiteColdItem:true,_keysuitePriceAvailable:false}));
+}
 const KEYSUITE_ALT_HEAD_MIN_RATIO=0.95;
 const KEYSUITE_ALT_FLOW_MAX_RATIO=1.10;
 function keychcAlternativeMaxCandidate(model){
@@ -825,7 +840,7 @@ function keychcAlternativeMaxCandidate(model){
 }
 function keychcAlternativePool(){return DB.models.map(keychcAlternativeMaxCandidate).filter(Boolean).sort(keychcModelComparator)}
 function keychcAlternativeVisiblePool(){
- const pool=keychcAlternativePool();
+ const hotAlreadyAvailable=selectionState.models.some(x=>x&&x._keysuiteColdItem!==true&&keybfiHasInputPrice(x)),pool=keybfiApplyStockPriority(keychcAlternativePool(),hotAlreadyAvailable);
  // Below 50% BEP is suppressed unless this is the smallest hydraulically eligible catalog model.
  return pool.filter((candidate,index)=>!candidate._keysuiteAltBelow50Bep||index===0);
 }
@@ -838,7 +853,7 @@ function renderAlternatives(){
  <div class="small">Alternative rule: max-flow endpoint window + 5% head allowance, D1–D6 checked with up to +10% max-flow tolerance, and &lt;50% BEP suppressed unless no smaller eligible model exists.</div>
  ${shortlist.length?shortlist.map((a,i)=>`
  <div class="alt-card" onclick="selectAlternativeModel('${String(a.model).replace(/'/g,"\\'")}')">
-   <div class="alt-top"><span>${keychcVisibleModelName(a.model)}</span><span>${a.motor_kw.toFixed(2)} kW</span></div>
+   <div class="alt-top"><span>${keychcVisibleModelName(a.model)}${a._keysuiteColdItem?' · Cold Item':''}</span><span>${a.motor_kw.toFixed(2)} kW</span></div>
    <div class="alt-meta">
      <span>${a.series} · ${a.stages} stage${a.stages>1?'s':''}</span>
      <span>Eff. ${a.eff.toFixed(1)}%</span>
@@ -848,7 +863,8 @@ function renderAlternatives(){
  </div>`).join(""):'<div class="small">No other model meets the Alternative Selection criteria.</div>'}`;
 }
 function selectAlternativeModel(modelName){
- const m=DB.models.find(x=>x.model===modelName),candidate=m&&keychcAlternativeMaxCandidate(m);if(!candidate)return;
+ const m=DB.models.find(x=>x.model===modelName),rawCandidate=m&&keychcAlternativeMaxCandidate(m);if(!rawCandidate)return;
+ const hasPrice=keybfiHasInputPrice(rawCandidate),candidate={...rawCandidate,_keysuiteColdItem:!hasPrice,_keysuitePriceAvailable:hasPrice};
  let idx=selectionState.models.findIndex(x=>x.model===modelName);if(idx<0){selectionState.models.push(candidate);idx=selectionState.models.length-1}
  selectionState.selectedIndex=idx;
  if(candidate._keysuiteAltFullSpeed){speedUnit.value='hz';speedInput.value='50';updateSpeedConversion();selectionState.curveHz=50;selectionState.hz=50}
@@ -1594,7 +1610,7 @@ function renderSelected(){
  const driveDetail=enhanced?`<div>${best.motor_kw.toFixed(2)} kW &nbsp; | &nbsp; Enhanced</div><div>Max ${KEYSUITE_ENHANCED_MAX_HZ} Hz · ${KEYSUITE_ENHANCED_MAX_RPM} rpm</div>`:`<div>${best.motor_kw.toFixed(2)} kW &nbsp; | &nbsp; Curve ${hz.toFixed(1)} Hz</div><div>${selectionHz.toFixed(1)} Hz · ${best.rpm.toFixed(0)} rpm</div>`;
  out.innerHTML=`
  <div class="selection-hero">
-   <div><div class="selection-eyebrow">Selected Pump</div><div class="selection-model">${keychcVisibleModelName(best.model,enhanced)}</div><div class="selection-sub">${keysuiteBfiPresentationAlias(best.series)} · ${best.stages} stage${best.stages>1?'s':''} · ${best.connection}${enhanced?' · Enhanced':''}</div><span class="selection-status">${enhanced?'SELECTED · ENHANCED':'SELECTED'}</span></div>
+   <div><div class="selection-eyebrow">Selected Pump</div><div class="selection-model">${keychcVisibleModelName(best.model,enhanced)}</div><div class="selection-sub">${keysuiteBfiPresentationAlias(best.series)} · ${best.stages} stage${best.stages>1?'s':''} · ${best.connection}${enhanced?' · Enhanced':''}${best._keysuiteColdItem?' · Cold Item':''}</div><span class="selection-status">${enhanced?'SELECTED · ENHANCED':best._keysuiteColdItem?'SELECTED · COLD ITEM':'SELECTED'}</span></div>
    <div class="selection-drive"><div class="drive-model">${formatHP(best.motor_hp)} &nbsp; | &nbsp; ${motorClass}</div>${driveDetail}<div class="selection-action-row"><button class="summary-toggle-btn" type="button" onclick="toggleKeyBFISummary()">Summary ${keychcSummaryCollapsed?'▶':'▼'}</button></div></div>
  </div>${speedNotice}${rangeNotice}${powerNotice}
  <div class="kpis ${keychcSummaryCollapsed?'summary-collapsed':''}">
@@ -1710,6 +1726,7 @@ function run(){
    const canonical=KEYSUITE_BFI_CORE.select(DB,q,h,hz);
    all=canonical.candidates;
  }
+ all=keybfiApplyStockPriority(all);
  if(!all.length){
    out.innerHTML=enhanced?`<div class="warning">No BFI model in the workbook range can meet ${q.toFixed(1)} m³/h @ ${h.toFixed(1)} m on the Enhanced Curve.</div>`:`<div class="warning">No BFI model in the workbook range can meet ${q.toFixed(1)} m³/h @ ${h.toFixed(1)} m at ${hz.toFixed(1)} Hz.</div>`;
    alternatives.innerHTML='';
@@ -1828,14 +1845,14 @@ alternatives.innerHTML='';
  function keychcPoleFromRpm(rpm){rpm=Number(rpm)||0;return rpm>=2400?2:rpm>=1200?4:rpm>=800?6:8}
  function keychcDashboardAlternatives(){
   const enhanced=!!selectionState.enhanced;
-  return keychcAlternativeList().map(a=>({model:a.model,base_model:a.model,display_model:keychcVisibleModelName(a.model,enhanced),motor_kw:a.motor_kw,motor_hp:a.motor_hp,pole:2,efficiency:a.eff,speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:a.rpm,frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:50,operating_speed_rpm:enhanced?Number(a.operatingRpm||0):a.rpm,operating_frequency_hz:enhanced?Number(a.operatingHz||0):50,enhanced,enhanced_curve:enhanced,max_speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:undefined,max_frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:undefined,torque_exceeded:false}));
+  return keychcAlternativeList().map(a=>({model:a.model,base_model:a.model,display_model:keychcVisibleModelName(a.model,enhanced),motor_kw:a.motor_kw,motor_hp:a.motor_hp,pole:2,efficiency:a.eff,speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:a.rpm,frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:50,operating_speed_rpm:enhanced?Number(a.operatingRpm||0):a.rpm,operating_frequency_hz:enhanced?Number(a.operatingHz||0):50,enhanced,enhanced_curve:enhanced,max_speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:undefined,max_frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:undefined,stock_status:a._keysuiteColdItem?'cold':'hot',price_available:a._keysuiteColdItem!==true,torque_exceeded:false}));
  }
  function currentSelection(){
   try{
    if(!selectionState?.models?.length)return null;
    const base=selectionState.models[selectionState.selectedIndex||0];const b=keychcCurrentDisplayModel()||base;const ks=liveOptions(),enhanced=!!selectionState.enhanced;
    const displayRpm=enhanced?KEYSUITE_ENHANCED_MAX_RPM:b.rpm,displayHz=enhanced?KEYSUITE_ENHANCED_MAX_HZ:Number(selectionState.curveHz||selectionState.hz||50);
-   return {source:'KeyBFI-V4.23.14',family:'BFI',generation_code:'BFI',keysuite_generation_code:'BFI',keysuite_product_group_code:'BFI',keysuite_price_group_code:'BFI',model:b.model,base_model:b.model,display_model:keychcVisibleModelName(b.model,enhanced),quotation_model:keychcVisibleModelName(b.model,enhanced),series:b.series,stages:b.stages,connection:b.connection,motor_kw:b.motor_kw,motor_hp:b.motor_hp,shaft_kw:b.shaft,efficiency:b.eff,npshr:b.npsh,speed_rpm:displayRpm,pole:enhanced?2:keychcPoleFromRpm(b.rpm),frequency_hz:displayHz,operating_speed_rpm:enhanced?Number(b.operatingRpm||0):b.rpm,operating_frequency_hz:enhanced?Number(b.operatingHz||0):displayHz,max_speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:undefined,max_frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:undefined,enhanced,enhanced_curve:enhanced,flow_m3h:selectionState.q,head_m:selectionState.h,raw_flow:selectionState.rawFlow,raw_head:selectionState.rawHead,raw_flow_text:selectionState.rawFlowText,raw_head_text:selectionState.rawHeadText,flow_unit:selectionState.flowUnit,head_unit:selectionState.headUnit,motor_efficiency_class:motorEff.value,motor_phase:motorPhase.value,motor_voltage:Number(motorVoltage.value),product_mode:!!selectionState.productMode,keysuite_material:ks.keysuite_material,keysuite_seal:ks.keysuite_seal,keysuite_elastomer:ks.keysuite_elastomer,keysuite_connection_type:ks.keysuite_connection_type,keysuite_bare_shaft:ks.keysuite_bare_shaft,keysuite_supply_mode:ks.keysuite_bare_shaft?'BARE':'COMPLETE',export_state:{...selectionState,enhanced,motorEffClass:motorEff.value,motorPhase:motorPhase.value,motorVoltage:Number(motorVoltage.value),models:[base],selectedIndex:0}};
+   return {source:'KeyBFI-V4.23.14',family:'BFI',generation_code:'BFI',keysuite_generation_code:'BFI',keysuite_product_group_code:'BFI',keysuite_price_group_code:'BFI',model:b.model,base_model:b.model,display_model:keychcVisibleModelName(b.model,enhanced),quotation_model:keychcVisibleModelName(b.model,enhanced),series:b.series,stages:b.stages,connection:b.connection,motor_kw:b.motor_kw,motor_hp:b.motor_hp,shaft_kw:b.shaft,efficiency:b.eff,npshr:b.npsh,speed_rpm:displayRpm,pole:enhanced?2:keychcPoleFromRpm(b.rpm),frequency_hz:displayHz,operating_speed_rpm:enhanced?Number(b.operatingRpm||0):b.rpm,operating_frequency_hz:enhanced?Number(b.operatingHz||0):displayHz,max_speed_rpm:enhanced?KEYSUITE_ENHANCED_MAX_RPM:undefined,max_frequency_hz:enhanced?KEYSUITE_ENHANCED_MAX_HZ:undefined,enhanced,enhanced_curve:enhanced,stock_status:b._keysuiteColdItem?'cold':'hot',price_available:b._keysuiteColdItem!==true,flow_m3h:selectionState.q,head_m:selectionState.h,raw_flow:selectionState.rawFlow,raw_head:selectionState.rawHead,raw_flow_text:selectionState.rawFlowText,raw_head_text:selectionState.rawHeadText,flow_unit:selectionState.flowUnit,head_unit:selectionState.headUnit,motor_efficiency_class:motorEff.value,motor_phase:motorPhase.value,motor_voltage:Number(motorVoltage.value),product_mode:!!selectionState.productMode,keysuite_material:ks.keysuite_material,keysuite_seal:ks.keysuite_seal,keysuite_elastomer:ks.keysuite_elastomer,keysuite_connection_type:ks.keysuite_connection_type,keysuite_bare_shaft:ks.keysuite_bare_shaft,keysuite_supply_mode:ks.keysuite_bare_shaft?'BARE':'COMPLETE',export_state:{...selectionState,enhanced,motorEffClass:motorEff.value,motorPhase:motorPhase.value,motorVoltage:Number(motorVoltage.value),models:[base],selectedIndex:0}};
   }catch(e){console.warn('KeySuite BFI payload error',e);return null}
  }
  window.__KEYSUITE_CURRENT_SELECTION=currentSelection;

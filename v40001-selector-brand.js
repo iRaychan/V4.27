@@ -322,6 +322,10 @@
     return String.raw`<script id="ksV394410PdfIdentity">(()=>{const c=${data};const sealText=()=>{const raw=String(c.seal||'Car/Cer').trim(),z=raw.toLowerCase().replace(/[\/_-]+/g,' ').replace(/\s+/g,' ').trim();let f=raw.replace(/[\/]+/g,' ').replace(/\s+/g,' ').trim();if(!z||z==='car cer'||z==='car sic'||z==='ca sic'||z.includes('carbon'))f='Ca SiC';else if(z==='sic sic'||z.includes('silicon carbide'))f='SiC SiC';else if(z==='tc tc'||z==='tuc tic'||z==='tuc tuc'||z.includes('tungsten'))f='TuC TuC';let e=String(c.elastomer||'Viton').trim()||'Viton';if(/^viton$/i.test(e))e='Viton';else if(/^epdm$/i.test(e))e='EPDM';else if(/^nbr$/i.test(e))e='NBR';return f==='Ca SiC'&&e==='Viton'?'Mechanical Seal':'Mech Seal - '+f+' '+e};const alias=t=>{let x=String(t??'');if(c.masterModel&&c.displayModel){const m=String(c.masterModel||'').trim(),d=String(c.displayModel||'').trim(),fam=String(c.family||'').toUpperCase();if(m&&d&&m!==d){const sa=fam==='CHC'||fam==='BFI',src=x;let pos=0,out='';for(;;){const j=src.indexOf(m,pos);if(j<0){out+=src.slice(pos);break}let k=j+m.length;if(sa)while(k<src.length&&'TE'.includes(src[k].toUpperCase()))k++;const next=src[k]||'';if(next&&/[A-Za-z0-9-]/.test(next)){out+=src.slice(pos,j+m.length);pos=j+m.length;continue}out+=src.slice(pos,j)+d;pos=k}x=out}}if(c.family==='CHC'&&c.sellingSeries)x=x.replace(/\b(?:CHCS|CHCN|CHC)\b/g,c.sellingSeries);else if(c.masterSeries&&c.sellingSeries&&c.masterSeries!==c.sellingSeries)x=x.split(c.masterSeries).join(c.sellingSeries);if(c.applyBrandName&&c.name)x=x.replace(/B\.G\.Reich/g,c.name);return x};const apply=()=>{try{document.title=c.pdfFileTitle||c.displayModel||alias(document.title);const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),a=[];while(w.nextNode())a.push(w.currentNode);a.forEach(n=>{const p=n.parentElement;if(!p||['SCRIPT','STYLE'].includes(p.tagName))return;const y=alias(n.nodeValue);if(y!==n.nodeValue)n.nodeValue=y});document.querySelectorAll('td').forEach(td=>{const label=String(td.textContent||'').trim();if(label==='Type'){const v=td.nextElementSibling;if(v&&c.family==='CHC')v.textContent='VMS Pump';}if(c.family==='CHC'&&/^Shaft Seal$/i.test(label)){const v=td.nextElementSibling;if(v)v.textContent=sealText();}if(/^No\. of Stage$/i.test(label)){const v=td.nextElementSibling;if(v){const m=String(v.textContent||'').match(/\d+/);if(m){const n=Number(m[0]);v.textContent=n+' '+(n===1?'Stage':'Stages');}}}});if(c.countryOfOrigin){document.querySelectorAll('td,th,dt,label,span,strong,b,p,div').forEach(l=>{if(!/^Country\s+(?:of\s+)?Origin\s*:?$/i.test(String(l.textContent||'').trim()))return;let v=l.nextElementSibling;if(!v&&l.parentElement){const k=[...l.parentElement.children],i=k.indexOf(l);v=i>=0?k[i+1]:null}if(v)v.textContent=c.countryOfOrigin});}if(c.logo){let st=document.getElementById('ksV394410PdfLogoStyle');if(!st){st=document.createElement('style');st.id='ksV394410PdfLogoStyle';st.textContent='.ks-v394410-brand-logo{width:52mm!important;height:auto!important;max-width:52mm!important;max-height:17mm!important;object-fit:contain!important;object-position:left bottom!important;box-sizing:border-box!important}.top{align-items:flex-end!important;padding-bottom:calc(1px + .353mm)!important}.top .ks-v394410-brand-logo{object-position:left bottom!important;align-self:flex-end!important;margin-bottom:0!important}';document.head.appendChild(st)}document.querySelectorAll('.top img,.tds-header img,.report-head img,img.brand-logo,img.tds-logo,.dimension-page img.brand-logo,header img').forEach(img=>{img.src=c.logo;img.setAttribute('src',c.logo);img.alt=c.name||'Brand';img.dataset.keysuitePdfBrand='1';img.classList.add('ks-v394410-brand-logo')});}}catch(e){console.warn('KeySuite V4.01 PDF identity:',e)}};apply();})();<\/script>`;
   }
 
+  function reportReadinessScript(){
+    return String.raw`<script id="ksV40001PdfBrandReady">(()=>{const done=()=>{document.getElementById('ksV40001PdfBrandPendingStyle')?.remove();document.documentElement.dataset.keysuitePdfBrandReady='1';try{window.dispatchEvent(new Event('keysuite-pdf-brand-ready'))}catch(_){}};const imageReady=img=>{if(img.complete){if(typeof img.decode==='function')return img.decode().catch(()=>{});return Promise.resolve()}return new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})})};const assets=async()=>{const images=[...document.querySelectorAll('img[data-keysuite-pdf-brand="1"],img.ks-v394410-brand-logo,img.ks-v3941-oem-pdf-logo')];await Promise.all(images.map(imageReady));if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(_){}}await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))};const timeout=new Promise(resolve=>setTimeout(resolve,8000));window.__KEYSUITE_PDF_BRAND_READY__=Promise.race([assets(),timeout]).then(done,done);})();<\/script>`;
+  }
+
   function escAttr(value){return String(value??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
   function replaceFirstImageInSection(html,className,logo,brandName){
     if(!logo)return html;
@@ -342,9 +346,31 @@
     out=out.replace(/(<td[^>]*>\s*No\. of Stage\s*<\/td>\s*<td[^>]*>\s*)(\d+)\s+Stages(\s*<\/td>)/gi,(_,a,n,z)=>a+n+' '+(Number(n)===1?'Stage':'Stages')+z);
     // Replace the native B.G.Reich image in Page 1 and Page 2 before the report is parsed.
     if(snapshot.logo){out=replaceFirstImageInSection(out,'top',snapshot.logo,snapshot.name);out=replaceFirstImageInSection(out,'tds-header',snapshot.logo,snapshot.name);}
-    const script=reportIdentityScript(snapshot);
+    // OEM reports stay hidden for their very short initial parse so the native
+    // B.G.Reich identity cannot flash before the assigned logo is decoded.
+    if(snapshot.logo&&/<head\b[^>]*>/i.test(out)){
+      const pending='<style id="ksV40001PdfBrandPendingStyle">body{visibility:hidden!important}</style>';
+      out=out.replace(/<head\b[^>]*>/i,tag=>tag+pending);
+    }
+    const script=reportIdentityScript(snapshot)+reportReadinessScript();
     const idx=out.toLowerCase().lastIndexOf('</body>');
     return idx>=0?out.slice(0,idx)+script+out.slice(idx):out+script;
+  }
+
+  function waitForReportAssets(win){
+    try{
+      if(win?.__KEYSUITE_PDF_BRAND_READY__&&typeof win.__KEYSUITE_PDF_BRAND_READY__.then==='function')return win.__KEYSUITE_PDF_BRAND_READY__;
+      const doc=win?.document;if(!doc)return Promise.resolve();
+      const imageReady=img=>{
+        if(img.complete){if(typeof img.decode==='function')return img.decode().catch(()=>{});return Promise.resolve();}
+        return new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});});
+      };
+      const images=[...doc.querySelectorAll('img[data-keysuite-pdf-brand="1"],img.ks-v394410-brand-logo,img.ks-v3941-oem-pdf-logo')];
+      const fonts=doc.fonts?.ready?Promise.resolve(doc.fonts.ready).catch(()=>{}):Promise.resolve();
+      const assets=Promise.all([fonts,...images.map(imageReady)]);
+      const timeout=new Promise(resolve=>setTimeout(resolve,8000));
+      return Promise.race([assets,timeout]).then(()=>new Promise(resolve=>win.requestAnimationFrame(()=>win.requestAnimationFrame(resolve))));
+    }catch(_){return Promise.resolve();}
   }
 
   function installReportWriteTransform(reportWin,sourceWin=null){
@@ -379,8 +405,13 @@
       if (!nativePrint) return;
       win.__KEYSUITE_V393_PRINT_HOOKED = true;
       win.print = (...args) => {
+        if(win.__KEYSUITE_PDF_PRINT_TASK__)return win.__KEYSUITE_PDF_PRINT_TASK__;
         try { applyReport(win.document,sourceWin); } catch (_) {}
-        return nativePrint(...args);
+        win.__KEYSUITE_PDF_PRINT_TASK__=waitForReportAssets(win).then(()=>{
+          try{win.document?.getElementById?.('ksV40001PdfBrandPendingStyle')?.remove();}catch(_){}
+          return nativePrint(...args);
+        }).finally(()=>{win.__KEYSUITE_PDF_PRINT_TASK__=null;});
+        return win.__KEYSUITE_PDF_PRINT_TASK__;
       };
     } catch (_) {}
   }

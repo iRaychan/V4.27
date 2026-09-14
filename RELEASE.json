@@ -1,18 +1,17 @@
 {
-  "version": "4.26.11",
-  "baseline": "4.26.10 FULL CLEAN",
-  "upgrade_supported_from": "4.26.10",
+  "version": "4.27.01",
+  "baseline": "4.26.11 FULL CLEAN",
+  "upgrade_supported_from": "4.26.11",
   "changes": [
-    "CHC and BFI quotations adjust automatically when the selected motor IE class differs from the included motor",
-    "Motor replacement pricing subtracts the included motor raw MYR cost and adds the selected motor customer quoted price using the matching pole and closest priced HP",
-    "CHC C4 defaults to IE2, CHC C6 defaults to IE3, BFI 1-phase defaults to IE1 and BFI 3-phase defaults to IE2",
-    "BFI selection supports IE2, IE3, IE4 and IE5 for 3-phase models and retains IE1 for 1-phase models",
-    "KeyBot preserves explicitly selected BFI motor efficiency instead of resetting it to the phase default",
-    "KeyBot Fast Search accepts product information first, a blank row, then the Customer name",
-    "KeyBot recognizes BG as B.G.Reich and handles standalone OK and M.O.S aliases before Customer matching"
+    "KeyBot plots a supplied duty point on the explicitly requested pump model curve",
+    "KeyBot preserves the entered duty unit and includes the converted m3/hr value in brackets",
+    "KeyBot routes B.G.Reich, MOS, OK, CHC, VMS, SVM, BFI and HMS as Brand, Series or pump-type input before Customer matching",
+    "Duty-only searches use the user's assigned pump series while explicit Brand or Series input restricts the search scope",
+    "KeySuite BFI and KeyBot prioritize suitable models with a filled pricelist value and use unpriced Cold Items only when no priced suitable model is available",
+    "OEM PDF export waits for the assigned Brand logo to load before display and Print so the B.G.Reich logo cannot be captured accidentally"
   ],
   "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.26.10. Upload the V4.26.11 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
+  "notes": "Upgrade from V4.26.11. Upload the V4.27.01 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
 }

@@ -1,19 +1,17 @@
-# KeySuite V4.26.11 FULL CLEAN
+# KeySuite V4.27.01 FULL CLEAN
 
-Baseline: V4.26.10.
+Baseline: V4.26.11.
 
 Changes:
-- CHC and BFI pump prices now respond to motor IE-class changes.
-- Formula: pump quoted price minus the included motor raw cost, plus the replacement motor quoted price.
-- Included motor defaults: CHC C4 IE2; CHC C6 IE3; BFI 1-phase IE1; BFI 3-phase IE2.
-- Motor matching uses the same pole and closest priced HP, preferring the higher HP when equally close.
-- BFI 3-phase selection now allows IE2, IE3, IE4 and IE5. BFI 1-phase remains IE1.
-- KeyBot no longer resets an explicitly selected BFI motor class to its phase default.
-- KeyBot accepts Product details first, one blank row, then the Customer name.
-- `BG` resolves to B.G.Reich; standalone `OK` and `M.O.S` are treated as Brand aliases before Customer matching.
+- KeyBot accepts an exact pump model followed by a duty point and plots that entered duty on the specified model curve.
+- Duty text preserves the user's entered flow unit and shows the converted m3/hr value in brackets, for example `1663 Lpm (99.8 m3/hr) @ 45 mtr`.
+- Brand, series and pump-type routing recognizes B.G.Reich, MOS/M.O.S, OK/O.K.Pump, CHC/VMS/SVM and BFI/HMS without treating the Brand as a Customer name.
+- A duty without a Brand searches the pump series assigned to the user; Brand or series input restricts the search to that scope.
+- KeySuite BFI and KeyBot prioritize models with a filled pricelist value. Unpriced models are shown as Cold Item only when no priced suitable model is available.
+- OEM PDF windows now wait for the assigned Brand name and logo to finish loading before becoming visible or opening Print, eliminating the B.G.Reich logo flash and refresh requirement.
 
 No new Supabase database migration is required.
 
 Deployment order:
-1. Upload/deploy the V4.26.11 web files.
+1. Upload/deploy the V4.27.01 web files.
 2. Redeploy the `telegram-webhook` Edge Function.

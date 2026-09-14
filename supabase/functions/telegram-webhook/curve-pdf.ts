@@ -110,7 +110,7 @@ function publicAssetBases(baseUrl:any){
 async function embedPublicPng(pdf:any,baseUrl:any,relativePath:string){
   const cleanPath=String(relativePath||'').replace(/^\/+/,''),errors:string[]=[];
   for(const base of publicAssetBases(baseUrl)){
-    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42611`;
+    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42701`;
     try{
       const response=await fetch(url,{headers:{'Accept':'image/png'}});
       if(!response.ok){errors.push(`${response.status} ${url}`);continue}
@@ -124,7 +124,7 @@ async function embedPublicPng(pdf:any,baseUrl:any,relativePath:string){
 async function embedPublicJpg(pdf:any,baseUrl:any,relativePath:string){
   const cleanPath=String(relativePath||'').replace(/^\/+/,''),errors:string[]=[];
   for(const base of publicAssetBases(baseUrl)){
-    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42611`;
+    const url=`${base}/${cleanPath}${cleanPath.includes('?')?'&':'?'}v=42701`;
     try{
       const response=await fetch(url,{headers:{'Accept':'image/jpeg'}});
       if(!response.ok){errors.push(`${response.status} ${url}`);continue}
@@ -644,7 +644,7 @@ export function selectPumpSummary(family:string,q:number,h:number,esPole=0,force
 }
 
 export function selectPumpCandidates(family:string,q:number,h:number,esPole=0,limit=6){
-  const fam=String(family||'').toUpperCase(),max=Math.max(1,Math.min(12,Math.trunc(Number(limit)||6)));
+  const fam=String(family||'').toUpperCase(),max=Math.max(1,Math.min(240,Math.trunc(Number(limit)||6)));
   if(!(Number(q)>0&&Number(h)>0))return [];
   if(isChcFamily(fam)){
     const engine=chcEngine(fam),result=engine.core.select(engine.db,Number(q),Number(h),50),rows=Array.isArray(result?.candidates)?result.candidates:[];
