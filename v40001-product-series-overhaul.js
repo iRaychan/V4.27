@@ -371,9 +371,28 @@
   function pdfReadyScript(){
     return `<script id="ksV40001SeriesPdfBrandReady">(()=>{const done=()=>{document.getElementById('ksV40001SeriesPdfBrandPendingStyle')?.remove();document.documentElement.dataset.keysuiteSeriesPdfBrandReady='1';try{window.dispatchEvent(new Event('keysuite-series-pdf-brand-ready'))}catch(_){}};const imageReady=img=>{if(img.complete){if(typeof img.decode==='function')return img.decode().catch(()=>{});return Promise.resolve()}return new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true})})};const assets=async()=>{const images=[...document.querySelectorAll('img[data-keysuite-pdf-brand="v40001"],.brand-logo,.tds-logo,.report-head img,.tds-header img,.top img,header img')];await Promise.all(images.map(imageReady));if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(_){}}await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))};const timeout=new Promise(resolve=>setTimeout(resolve,8000));window.__KEYSUITE_SERIES_PDF_BRAND_READY__=Promise.race([assets(),timeout]).then(done,done);})();<\/script>`;
   }
+  function escPdfHtml(value){return String(value??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function replacePdfBrandImages(html,s){
+    const logo=norm(s?.logo);if(!logo)return html;const src='src="'+escPdfHtml(logo)+'"',alt='alt="'+escPdfHtml(s?.name||'Brand')+'"';
+    return String(html||'').replace(/<img\b[^>]*>/gi,tag=>{
+      if(!/(?:\bbrand-logo\b|\btds-logo\b|bgreich[-_ ]?logo|b\.g\.?\s*reich)/i.test(tag))return tag;
+      let out=/\bsrc\s*=\s*(["']).*?\1/i.test(tag)?tag.replace(/\bsrc\s*=\s*(["']).*?\1/i,src):tag.replace(/<img\b/i,'<img '+src);
+      out=/\balt\s*=\s*(["']).*?\1/i.test(out)?out.replace(/\balt\s*=\s*(["']).*?\1/i,alt):out.replace(/<img\b/i,'<img '+alt);
+      if(!/data-keysuite-pdf-brand=/i.test(out))out=out.replace(/<img\b/i,'<img data-keysuite-pdf-brand="v40001"');
+      return out;
+    });
+  }
+  function replacePdfVisibleBrandText(html,s){
+    if(!s?.applyBrandName||!s?.name)return html;const replacement=escPdfHtml(s.name),replaceText=part=>part.replace(/(^|>)([^<]+)/g,(_,lead,text)=>lead+text.replace(/B\.G\.?\s*Reich/gi,replacement));
+    const source=String(html||''),block=/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;let out='',at=0,m;
+    while((m=block.exec(source))){out+=replaceText(source.slice(at,m.index))+m[0];at=m.index+m[0].length;}
+    return out+replaceText(source.slice(at));
+  }
   function transformReportHtml(html,s){
     if(typeof html!=='string'||!html)return html;let out=html.replace(/(<td[^>]*>\s*No\. of Stage\s*<\/td>\s*<td[^>]*>\s*)(\d+)\s+Stages(\s*<\/td>)/gi,(_,a,n,z)=>a+n+' '+(Number(n)===1?'Stage':'Stages')+z);
     if(/id=["']ksV40001PdfFinal["']/i.test(out))return out;
+    out=replacePdfBrandImages(out,s||{});
+    out=replacePdfVisibleBrandText(out,s||{});
     if(s?.logo&&/<head\b[^>]*>/i.test(out)){
       const pending='<style id="ksV40001SeriesPdfBrandPendingStyle">body{visibility:hidden!important}</style>';
       out=out.replace(/<head\b[^>]*>/i,tag=>tag+pending);
@@ -393,7 +412,17 @@
   }
   function installReportTransform(reportWin,s){
     if(!reportWin)return;try{
+      reportWin.__KEYSUITE_SERIES_PDF_SNAPSHOT__=s||reportWin.__KEYSUITE_SERIES_PDF_SNAPSHOT__||{};
       const patchDoc=doc=>{if(!doc||doc.__KEYSUITE_V3964_WRITE_HOOKED)return;doc.__KEYSUITE_V3964_WRITE_HOOKED=true;const write=doc.write?.bind(doc),writeln=doc.writeln?.bind(doc);if(write)doc.write=(...parts)=>write(...parts.map(x=>typeof x==='string'?transformReportHtml(x,s):x));if(writeln)doc.writeln=(...parts)=>writeln(...parts.map(x=>typeof x==='string'?transformReportHtml(x,s):x))};patchDoc(reportWin.document);
+      // document.open() may recreate the popup Document and discard its own
+      // write override. Keep the first-render OEM rewrite on this window's
+      // Document prototype so the native B.G.Reich markup is never painted.
+      const proto=reportWin.Document?.prototype;
+      if(proto&&!proto.__KEYSUITE_V40001_SERIES_WRITE_HOOKED){
+        proto.__KEYSUITE_V40001_SERIES_WRITE_HOOKED=true;const write=proto.write,writeln=proto.writeln;
+        if(typeof write==='function')proto.write=function(...parts){const snap=this.defaultView?.__KEYSUITE_SERIES_PDF_SNAPSHOT__||{};return write.apply(this,parts.map(x=>typeof x==='string'?transformReportHtml(x,snap):x))};
+        if(typeof writeln==='function')proto.writeln=function(...parts){const snap=this.defaultView?.__KEYSUITE_SERIES_PDF_SNAPSHOT__||{};return writeln.apply(this,parts.map(x=>typeof x==='string'?transformReportHtml(x,snap):x))};
+      }
       if(!reportWin.__KEYSUITE_V3964_PRINT_HOOKED&&typeof reportWin.print==='function'){reportWin.__KEYSUITE_V3964_PRINT_HOOKED=true;const nativePrint=reportWin.print.bind(reportWin);reportWin.print=(...a)=>{if(reportWin.__KEYSUITE_SERIES_PDF_PRINT_TASK__)return reportWin.__KEYSUITE_SERIES_PDF_PRINT_TASK__;try{applyIdentityDoc(reportWin.document,s)}catch(_){}reportWin.__KEYSUITE_SERIES_PDF_PRINT_TASK__=waitForPdfAssets(reportWin).then(()=>{try{reportWin.document?.getElementById?.('ksV40001SeriesPdfBrandPendingStyle')?.remove()}catch(_){}return nativePrint(...a)}).finally(()=>{reportWin.__KEYSUITE_SERIES_PDF_PRINT_TASK__=null});return reportWin.__KEYSUITE_SERIES_PDF_PRINT_TASK__}}
       try{reportWin.addEventListener('load',()=>applyIdentityDoc(reportWin.document,s),{once:true})}catch(_){}
     }catch(e){console.warn('[KeySuite V4.01] report hook:',e)}

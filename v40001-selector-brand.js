@@ -327,6 +327,23 @@
   }
 
   function escAttr(value){return String(value??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+  function replaceReportBrandImagesInHtml(html,logo,brandName,marker='1'){
+    if(!logo)return html;
+    const src='src="'+escAttr(logo)+'"',alt='alt="'+escAttr(brandName||'Brand')+'"';
+    return String(html||'').replace(/<img\b[^>]*>/gi,tag=>{
+      if(!/(?:\bbrand-logo\b|\btds-logo\b|bgreich[-_ ]?logo|b\.g\.?\s*reich)/i.test(tag))return tag;
+      let out=/\bsrc\s*=\s*(["']).*?\1/i.test(tag)?tag.replace(/\bsrc\s*=\s*(["']).*?\1/i,src):tag.replace(/<img\b/i,'<img '+src);
+      out=/\balt\s*=\s*(["']).*?\1/i.test(out)?out.replace(/\balt\s*=\s*(["']).*?\1/i,alt):out.replace(/<img\b/i,'<img '+alt);
+      if(!/data-keysuite-pdf-brand=/i.test(out))out=out.replace(/<img\b/i,'<img data-keysuite-pdf-brand="'+escAttr(marker)+'"');
+      return out;
+    });
+  }
+  function replaceVisibleBrandTextInHtml(html,brandName){
+    const replacement=escAttr(brandName||'Brand'),replaceText=part=>part.replace(/(^|>)([^<]+)/g,(_,lead,text)=>lead+text.replace(/B\.G\.?\s*Reich/gi,replacement));
+    const source=String(html||''),block=/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;let out='',at=0,m;
+    while((m=block.exec(source))){out+=replaceText(source.slice(at,m.index))+m[0];at=m.index+m[0].length;}
+    return out+replaceText(source.slice(at));
+  }
   function replaceFirstImageInSection(html,className,logo,brandName){
     if(!logo)return html;
     const startRe=new RegExp('<(?:div|section)\\b[^>]*class=["\\\'][^"\\\']*\\b'+className+'\\b[^"\\\']*["\\\'][^>]*>','i');
@@ -345,7 +362,8 @@
     // Native-source correction: Page 2 must say 1 Stage, otherwise n Stages.
     out=out.replace(/(<td[^>]*>\s*No\. of Stage\s*<\/td>\s*<td[^>]*>\s*)(\d+)\s+Stages(\s*<\/td>)/gi,(_,a,n,z)=>a+n+' '+(Number(n)===1?'Stage':'Stages')+z);
     // Replace the native B.G.Reich image in Page 1 and Page 2 before the report is parsed.
-    if(snapshot.logo){out=replaceFirstImageInSection(out,'top',snapshot.logo,snapshot.name);out=replaceFirstImageInSection(out,'tds-header',snapshot.logo,snapshot.name);}
+    if(snapshot.logo){out=replaceFirstImageInSection(out,'top',snapshot.logo,snapshot.name);out=replaceFirstImageInSection(out,'tds-header',snapshot.logo,snapshot.name);out=replaceReportBrandImagesInHtml(out,snapshot.logo,snapshot.name,'1');}
+    if(snapshot.applyBrandName&&snapshot.name)out=replaceVisibleBrandTextInHtml(out,snapshot.name);
     // OEM reports stay hidden for their very short initial parse so the native
     // B.G.Reich identity cannot flash before the assigned logo is decoded.
     if(snapshot.logo&&/<head\b[^>]*>/i.test(out)){

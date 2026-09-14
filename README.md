@@ -1,17 +1,15 @@
-# KeySuite V4.27.01 FULL CLEAN
+# KeySuite V4.27.02 FULL CLEAN
 
-Baseline: V4.26.11.
+Baseline: V4.27.01.
 
 Changes:
-- KeyBot accepts an exact pump model followed by a duty point and plots that entered duty on the specified model curve.
-- Duty text preserves the user's entered flow unit and shows the converted m3/hr value in brackets, for example `1663 Lpm (99.8 m3/hr) @ 45 mtr`.
-- Brand, series and pump-type routing recognizes B.G.Reich, MOS/M.O.S, OK/O.K.Pump, CHC/VMS/SVM and BFI/HMS without treating the Brand as a Customer name.
-- A duty without a Brand searches the pump series assigned to the user; Brand or series input restricts the search to that scope.
-- KeySuite BFI and KeyBot prioritize models with a filled pricelist value. Unpriced models are shown as Cold Item only when no priced suitable model is available.
-- OEM PDF windows now wait for the assigned Brand name and logo to finish loading before becoming visible or opening Print, eliminating the B.G.Reich logo flash and refresh requirement.
+- OEM PDF popup pages now contain the assigned Brand name and logo before their first visible render.
+- ES exports, including VEC and other assigned OEM Brands, no longer show the native B.G.Reich logo briefly before changing.
+- Page 1, Page 2 and Page 3 Brand-logo elements are rewritten before `document.write()` completes.
+- The pre-render OEM rewrite survives popup `document.open()` document resets.
+- Printing still waits for the final Brand image and fonts to finish loading.
 
-No new Supabase database migration is required.
+This is a web-only upgrade. No Supabase database push or Edge Function deployment is required.
 
-Deployment order:
-1. Upload/deploy the V4.27.01 web files.
-2. Redeploy the `telegram-webhook` Edge Function.
+Deployment:
+1. Upload/deploy the V4.27.02 web files.

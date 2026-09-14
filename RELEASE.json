@@ -1,17 +1,16 @@
 {
-  "version": "4.27.01",
-  "baseline": "4.26.11 FULL CLEAN",
-  "upgrade_supported_from": "4.26.11",
+  "version": "4.27.02",
+  "baseline": "4.27.01 FULL CLEAN",
+  "upgrade_supported_from": "4.27.01",
   "changes": [
-    "KeyBot plots a supplied duty point on the explicitly requested pump model curve",
-    "KeyBot preserves the entered duty unit and includes the converted m3/hr value in brackets",
-    "KeyBot routes B.G.Reich, MOS, OK, CHC, VMS, SVM, BFI and HMS as Brand, Series or pump-type input before Customer matching",
-    "Duty-only searches use the user's assigned pump series while explicit Brand or Series input restricts the search scope",
-    "KeySuite BFI and KeyBot prioritize suitable models with a filled pricelist value and use unpriced Cold Items only when no priced suitable model is available",
-    "OEM PDF export waits for the assigned Brand logo to load before display and Print so the B.G.Reich logo cannot be captured accidentally"
+    "OEM PDF popup pages use the assigned Brand identity before their first visible render",
+    "ES exports such as VEC no longer flash the native B.G.Reich logo before switching to the assigned OEM logo",
+    "Brand-logo elements on every PDF page are rewritten before document.write completes",
+    "The OEM first-render rewrite survives popup document.open resets",
+    "Print remains delayed until the final Brand image and fonts are ready"
   ],
   "new_database_migration_required": false,
-  "edge_function_deploy_required": true,
+  "edge_function_deploy_required": false,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.26.11. Upload the V4.27.01 web assets first, then redeploy telegram-webhook. No Supabase db push is required."
+  "notes": "Web-only upgrade from V4.27.01. Upload the V4.27.02 web assets. No Supabase db push or telegram-webhook deployment is required."
 }
