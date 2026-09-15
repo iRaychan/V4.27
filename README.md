@@ -1,15 +1,17 @@
-# KeySuite V4.27.02 FULL CLEAN
+# KeySuite V4.27.03 FULL CLEAN
 
-Baseline: V4.27.01.
+Baseline: V4.27.02.
 
 Changes:
-- OEM PDF popup pages now contain the assigned Brand name and logo before their first visible render.
-- ES exports, including VEC and other assigned OEM Brands, no longer show the native B.G.Reich logo briefly before changing.
-- Page 1, Page 2 and Page 3 Brand-logo elements are rewritten before `document.write()` completes.
-- The pre-render OEM rewrite survives popup `document.open()` document resets.
-- Printing still waits for the final Brand image and fonts to finish loading.
+- Quick Pump Selection adds a **Cold Item** checkbox beside **Check Pumps**.
+- With Cold Item unticked, models with a filled price remain the priority and unpriced alternatives stay hidden when priced models are available.
+- With Cold Item ticked, suitable unpriced CHC C4/C6, BFI and ES models are included and labelled **Cold Item**.
+- KeyBot first shows priced recommended and alternative models, followed by a **Cold Item** button.
+- Pressing **Cold Item** opens the suitable unpriced-model list without rerunning the duty selection.
+- A selected cold model keeps its **Cold Item** status through the model summary and curve generation.
 
-This is a web-only upgrade. No Supabase database push or Edge Function deployment is required.
+No Supabase database migration is required. The `telegram-webhook` Edge Function must be redeployed for the KeyBot changes.
 
 Deployment:
-1. Upload/deploy the V4.27.02 web files.
+1. Upload/deploy the V4.27.03 web files.
+2. Link Supabase project `skidqdixnnnuhvarekxp` and deploy the `telegram-webhook` function.
