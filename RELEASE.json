@@ -1,20 +1,16 @@
 {
-  "version": "4.27.04",
-  "baseline": "4.27.03 FULL CLEAN",
-  "upgrade_supported_from": "4.27.03",
+  "version": "4.27.05",
+  "baseline": "4.27.04 FULL CLEAN",
+  "upgrade_supported_from": "4.27.04",
   "changes": [
-    "Quick Pump Selection adds a Cold Item checkbox beside Check Pumps",
-    "Unticked selection prioritizes priced models and hides unpriced alternatives when priced models exist",
-    "Ticked selection includes suitable unpriced CHC C4/C6, BFI and ES models with Cold Item labels",
-    "KeyBot shows priced recommended and alternative models first with a Cold Item button at the end",
-    "KeyBot opens the retained unpriced candidate list only after Cold Item is selected",
-    "Cold Item status is preserved through KeyBot model selection and curve generation",
-    "BFI adds selectable Stainless Steel 304 and Stainless Steel 316 materials",
-    "SS304 keeps the BFI model prefix while SS316 uses the BFIN model prefix in KeySuite, quotations, PDFs and KeyBot",
-    "BFIN keeps the original BFI hydraulic and price-list identity"
+    "Price List adds a separate BFIN Stainless Steel 316 table with independent MYR, USD and RMB source prices",
+    "BFIN has independent 1 Phase and 3 Phase prices and rarity values and no longer reuses BFI Stainless Steel 304 prices",
+    "KeySuite and KeyBot quotations both use the new BFIN price book",
+    "BFIN PDF Page 2 reports casing, impeller and shaft as Stainless Steel 316",
+    "CHC C4, CHC C6 and BFI motors rated 0.75 HP or below automatically use efficiency class IE1 in KeySuite and KeyBot"
   ],
-  "new_database_migration_required": false,
+  "new_database_migration_required": true,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.03. Upload the V4.27.04 web assets and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp. No database migration is required."
+  "notes": "Upgrade from V4.27.04. Upload the V4.27.05 web assets, run supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
 }
