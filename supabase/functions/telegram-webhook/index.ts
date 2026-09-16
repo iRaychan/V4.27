@@ -511,7 +511,7 @@ function parseHeadStep(text:string){
 }
 function quoteFamilyFromText(text:any){
   const s=String(text||'');
-  if(/\b(?:bfi|hms)\b/i.test(s))return 'BFI';
+  if(/\b(?:bfin?|hms)\b/i.test(s))return 'BFI';
   if(/\b(?:chc|vms|svm|vertical\s+multistage(?:\s+inline\s+pump)?)\b/i.test(s))return 'CHC';
   if(/\bes\s*[- ]?4\s*(?:p|pole)?\b|\b4\s*(?:p|pole)\s*es\b/i.test(s))return 'ES4';
   if(/\bes\s*[- ]?2\s*(?:p|pole)?\b|\b2\s*(?:p|pole)\s*es\b/i.test(s))return 'ES2';
@@ -533,13 +533,13 @@ function parseDirectPumpModel(text:any){
   const raw=String(text||'');
   // BFI identity: no suffix = 1Ph/IE1, T = 3Ph/IE2 standard, E = 3Ph/IE2 Enhanced.
   // KeyBot confirms the motor phase before finalising a direct BFI model.
-  const bfi=raw.match(/\b(?:BFI|HMS)\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?)\s*([TE])?\b/i);
+  const bfi=raw.match(/\b(?:BFIN?|HMS)\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?)\s*([TE])?\b/i);
   if(bfi){const suffix=String(bfi[3]||'').toUpperCase();return {family:'BFI',model:`BFI ${bfi[1]}-${String(bfi[2]).replace(/\s+/g,'')}${suffix}`};}
   const chc=raw.match(/\b(?:CHC|VMS)\s*(\d{1,3})\s*-\s*(\d{1,3}(?:\s*-\s*\d{1,2})?(?:\s*-\s*\d{1,2})?)\b/i);
   if(chc)return {family:'CHC',model:`CHC ${chc[1]}-${String(chc[2]).replace(/\s+/g,'')}`};
   return null;
 }
-function bfiBaseModelName(value:any){return String(value||'').trim().replace(/[TE]$/i,'')}
+function bfiBaseModelName(value:any){return String(value||'').trim().replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,'')}
 function bfiPhaseModelName(value:any,phase:any,enhanced=false){const base=bfiBaseModelName(value),p=String(phase||'').toUpperCase();return enhanced&&p==='3PH'?`${base}E`:p==='3PH'?`${base}T`:base}
 function bfiPhaseChoice(value:any){const c=cleanSearch(value);if(c==='1 phase'||c==='1ph'||c==='single phase'||c==='singlephase')return '1Ph';if(c==='3 phase'||c==='3ph'||c==='three phase'||c==='threephase')return '3Ph';return ''}
 function bfiAvailablePhases(value:any){const wanted=bfiBaseModelName(value).toUpperCase(),db:any=(globalThis as any).KeySuiteBFIData,row=(db?.models||[]).find((x:any)=>String(x.model||'').toUpperCase()===wanted),phases=Array.isArray(row?.phases)?row.phases.filter((x:any)=>x==='1Ph'||x==='3Ph'):[];return phases.length?phases:['3Ph']}
@@ -560,7 +560,7 @@ function smartQuoteRequest(text:any){
   const request:any={raw_input:raw};
   const family=quoteFamilyFromText(raw);if(family)request.family_code=family;
   const chcScope=quoteChcScopeFromText(raw);if(chcScope)request.chc_scope=chcScope;
-  const directModel=parseDirectPumpModel(raw);if(directModel){request.direct_model=directModel.model;request.family_code=directModel.family;request.product_type='pump';if(directModel.family==='BFI'){const phases=bfiAvailablePhases(directModel.model);if(phases.length===1)Object.assign(request,bfiDirectRequestForPhase({...request,bfi_requested_enhanced:/E$/i.test(String(directModel.model||''))},phases[0]));}}
+  const directModel=parseDirectPumpModel(raw);if(directModel){request.direct_model=directModel.model;request.family_code=directModel.family;request.product_type='pump';if(directModel.family==='BFI'){if(/\bBFIN\b/i.test(raw))request.options={...(request.options||{}),material:'SS316'};const phases=bfiAvailablePhases(directModel.model);if(phases.length===1)Object.assign(request,bfiDirectRequestForPhase({...request,bfi_requested_enhanced:/E$/i.test(String(directModel.model||''))},phases[0]));}}
   const keyplc=parseKeyplcSystemRequest(raw);if(keyplc){Object.assign(request,keyplc);request.product_type='keyplc_system';}
   const tankIntent=!keyplc&&/\b(?:gws|tank|pressure\s*(?:tank|vessel))\b/i.test(raw);
   const pumpIntent=!keyplc&&!tankIntent&&(!!family||!!directModel||/\bpump\b/i.test(raw)||/@/.test(raw)||/\bm3\s*\/?\s*(?:h|hr)\b/i.test(normalized));
@@ -614,6 +614,11 @@ function chcVariantModel(value:any,material:any){
   const base=raw.replace(/^CHCS\b/i,'CHC').replace(/^CHCN\b/i,'CHC');if(!/^CHC\b/i.test(base))return raw;
   return material==='SS304'?base.replace(/^CHC\b/i,'CHCS'):material==='SS316'?base.replace(/^CHC\b/i,'CHCN'):base;
 }
+function bfiVariantModel(value:any,material:any){
+  const raw=String(value||'').trim();if(!raw)return raw;
+  const base=raw.replace(/^BFIN\b/i,'BFI');if(!/^BFI\b/i.test(base))return raw;
+  return String(material||'').toUpperCase()==='SS316'?base.replace(/^BFI\b/i,'BFIN'):base;
+}
 function esPricingMaterial(value:any){
   const raw=String(value||'').trim();if(/^SS\s*304$/i.test(raw))return 'SS304';if(/^SS\s*316$/i.test(raw))return 'SS316';
   if(!raw||/^standard$/i.test(raw))return 'CI / SS / SS / MS';return raw;
@@ -629,11 +634,11 @@ function applyPumpOptionsToItem(item:any,options:any){
     if(displayModel)displayModel=chcVariantModel(displayModel,o.material);
   }else if(family==='BFI'){
     // V4.23.08 BFI identity: base = 1Ph/IE1, T = 3Ph/IE2 standard, E = 3Ph/IE2 Enhanced.
-    const identity=String(displayModel||item?.quotation_model||model||''),base=String(item?.base_model||model||displayModel).replace(/[TE]$/i,'').trim();
+    const identity=String(displayModel||item?.quotation_model||model||''),base=String(item?.base_model||model||displayModel).replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,'').trim();
     const enhanced=!!item?.enhanced||/E$/i.test(identity),hintedPhase=String(item?.motor_phase||item?.phase||'');
     const phase=enhanced?'3Ph':(hintedPhase==='1Ph'||hintedPhase==='3Ph'?hintedPhase:(/T$/i.test(identity)?'3Ph':'1Ph'));
     const variant=(value:any)=>{const v=String(value||base).replace(/[TE]$/i,'').trim();return enhanced?`${v}E`:phase==='3Ph'?`${v}T`:v};
-    model=base;displayModel=variant(displayModel||base);
+    model=base;displayModel=bfiVariantModel(variant(displayModel||base),o.material);
     (item as any).motor_phase=phase;(item as any).enhanced=enhanced;(item as any).enhanced_curve=enhanced;
   }
   const next:any={...item,model,...(displayModel?{display_model:displayModel}:{}),qty:o.qty,options:o,keysuite_material:family==='ES'?esPricingMaterial(o.material):o.material};
@@ -642,9 +647,9 @@ function applyPumpOptionsToItem(item:any,options:any){
     if(item?.pricing_model)next.pricing_model=chcVariantModel(item.pricing_model,o.material);
     next.material_variant=o.material==='SS304'?'CHCS':o.material==='SS316'?'CHCN':'CHC';
   }else if(family==='BFI'){
-    const identity=String(displayModel||item?.quotation_model||''),enhanced=!!item?.enhanced||/E$/i.test(identity),phase=enhanced?'3Ph':(String(item?.motor_phase||'1Ph')==='3Ph'?'3Ph':'1Ph'),base=String(item?.base_model||model).replace(/[TE]$/i,'').trim();
-    const clean=String(displayModel||base).replace(/[TE]$/i,''),display=enhanced?`${clean}E`:phase==='3Ph'?`${clean}T`:clean;
-    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.motor_phase=phase;next.default_motor_efficiency_class=phase==='1Ph'?'IE1':'IE2';next.motor_efficiency_class=o.motor_efficiency;next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
+    const identity=String(displayModel||item?.quotation_model||''),enhanced=!!item?.enhanced||/E$/i.test(identity),phase=enhanced?'3Ph':(String(item?.motor_phase||'1Ph')==='3Ph'?'3Ph':'1Ph'),base=String(item?.base_model||model).replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,'').trim();
+    const clean=String(displayModel||base).replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,''),phaseDisplay=enhanced?`${clean}E`:phase==='3Ph'?`${clean}T`:clean,display=bfiVariantModel(phaseDisplay,o.material);
+    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.keysuite_material=o.material==='SS316'?'Stainless Steel 316':'Stainless Steel 304';next.material_variant=o.material==='SS316'?'BFIN':'BFI';next.motor_phase=phase;next.default_motor_efficiency_class=phase==='1Ph'?'IE1':'IE2';next.motor_efficiency_class=o.motor_efficiency;next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
     if(item?.pricing_model)next.pricing_model=String(item.pricing_model).replace(/[TE]$/i,'');
   }else if(family==='ES')next.pricing_material=esPricingMaterial(o.material);
   if(family==='CHC'){next.default_motor_efficiency_class=defaultMotorEfficiency;next.motor_efficiency_class=o.motor_efficiency;next.options={...o,motor_efficiency:next.motor_efficiency_class};}
@@ -1899,7 +1904,7 @@ async function persistDraftItems(service:any,companyId:string,chatId:string,send
 function quoteItemForKeySuite(item:any){
   const family=String(item?.family||'').toUpperCase(),qty=Math.max(1,Math.trunc(Number(item?.qty)||1)),unitPrice=Number(item?.unit_price||0),pricingSource=item?.pricing||null;
   if(family==='GWS')return {model:String(item?.model||''),qty,unit:'Unit',unitPrice,productFamily:'GWS',description:[`Keylargo GWS Tank Model: ${String(item?.model||'')}`,Number(item?.tank_size_litres)>0?`Capacity: ${inputNumber(item.tank_size_litres)} Litres`:null,Number(item?.tank_pressure_bar)>0?`Pressure: ${inputNumber(item.tank_pressure_bar)} Bar`:null].filter(Boolean).join('\n'),pricingSource};
-  const o=pumpOptions(item?.options,qty),kw=Number(item?.motor_kw||0),hp=Number(item?.motor_hp||0),pole=Number(item?.pole||2)||2,brand=String(item?.brand||'B.G.Reich'),series=family==='ES'?`End Suction Pump`:`Vertical Multistage Pump`,desc=[`${brand} ${series} Model: ${String(item?.model||'')}`,o.bare_shaft?'(Bare shaft pump)':(kw>0?`c/w ${hp>0?`${oneDecimal(hp)} HP / `:''}${oneDecimal(kw)} kW ${pole} Pole ${o.motor_efficiency} Motor (415 V / 3 Ph / 50 Hz)`:null),`Material: ${o.material} / Mech Seal - ${o.seal}/${o.elastomer}`,`Connection: ${o.connection}`].filter(Boolean).join('\n');
+  const o=pumpOptions(item?.options,qty),kw=Number(item?.motor_kw||0),hp=Number(item?.motor_hp||0),pole=Number(item?.pole||2)||2,brand=String(item?.brand||'B.G.Reich'),series=family==='ES'?`End Suction Pump`:family==='BFI'?`Horizontal Multistage Pump`:`Vertical Multistage Pump`,desc=[`${brand} ${series} Model: ${String(item?.display_model||item?.quotation_model||item?.model||'')}`,o.bare_shaft?'(Bare shaft pump)':(kw>0?`c/w ${hp>0?`${oneDecimal(hp)} HP / `:''}${oneDecimal(kw)} kW ${pole} Pole ${o.motor_efficiency} Motor (415 V / 3 Ph / 50 Hz)`:null),`Material: ${family==='BFI'?(o.material==='SS316'?'Stainless Steel 316':'Stainless Steel 304'):o.material} / Mech Seal - ${o.seal}/${o.elastomer}`,`Connection: ${o.connection}`].filter(Boolean).join('\n');
   return {model:String(item?.model||''),qty,unit:'Unit',unitPrice,productFamily:family,description:desc,displayCapacity:true,capacityValue:String(Number(item?.requested_flow_m3h||0)),capacityUnit:'m³/hr',headValue:String(Number(item?.requested_head_m||0)),headUnit:'Mtr',pumpData:item,pricingSource};
 }
 async function createSavedQuotationFromDraft(service:any,companyId:string,draft:any){
@@ -2254,7 +2259,7 @@ Deno.serve(async(req)=>{
     if(menuText||callbackData==='menu:home'){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.03'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.04'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2380,7 +2385,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.03'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.04'});
     }
 
     if(newRequestButton){

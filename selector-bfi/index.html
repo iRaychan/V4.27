@@ -226,6 +226,7 @@ body.product-frame main{display:block;max-width:none;padding:8px}body.product-fr
   <div id="enhancedInfo" class="enhanced-info" hidden>Enhanced Curve · 60 Hz · motor-power limited</div>
   <input id="hz" type="hidden" value="50">
   <div class="motor-options">
+    <div><label for="pumpMaterial">Pump Material</label><select id="pumpMaterial"><option value="SS304" selected>Stainless Steel 304</option><option value="SS316">Stainless Steel 316</option></select></div>
     <div><label for="motorEff">Motor Efficiency</label><select id="motorEff"><option value="IE1">IE1</option><option value="IE2" selected>IE2</option><option value="IE3">IE3</option><option value="IE4">IE4</option><option value="IE5">IE5</option></select></div>
     <div><label for="motorPhase">Motor Phase</label><select id="motorPhase"><option value="3Ph" selected>3 Phase</option><option value="1Ph">1 Phase</option></select></div>
   </div>
@@ -329,7 +330,9 @@ const MOTOR_DB=(()=>{
 function motorValue(v,suffix=""){if(v===null||v===undefined||v===""||v==="-")return "-";return `${Number(v).toFixed(Number(v)%1===0?0:2).replace(/\.00$/,"").replace(/(\.\d)0$/,"$1")}${suffix}`;}
 function keysuiteBfiMotorEffForPhase(phase){return String(phase||'3Ph')==='1Ph'?'IE1':'IE2'}
 function keysuiteBfiMotorDbClass(effClass){return String(effClass||'').toUpperCase()==='IE1'?'IE':String(effClass||'IE2').toUpperCase()}
-function keybfiBaseModelName(model){return String(model||'').trim().replace(/[TE]+$/i,'').trim()}
+function keybfiBaseModelName(model){return String(model||'').trim().replace(/^BFIN\b/i,'BFI').replace(/[TE]+$/i,'').trim()}
+function keybfiMaterialCode(value){return /316/.test(String(value||''))?'SS316':'SS304'}
+function keybfiMaterialModelName(model,material){const raw=String(model||'').replace(/^BFIN\b/i,'BFI');return keybfiMaterialCode(material)==='SS316'?raw.replace(/^BFI\b/i,'BFIN'):raw}
 function keybfiEnhancedAllowed(phase){return String(phase||selectionState?.motorPhase||motorPhase?.value||'3Ph')==='3Ph'}
 function keybfiPhaseModelName(model,phase,enhanced=false){const raw=keybfiBaseModelName(model),ph=String(phase||selectionState?.motorPhase||'3Ph');if(ph==='3Ph'&&enhanced)return raw+'E';return ph==='3Ph'?raw+'T':raw}
 function findMotorData(hp,effClass,phase,voltage,hz){
@@ -726,7 +729,7 @@ function keysuiteBfiApplyBrandingToReport(html){
  }
  return out;
 }
-function keychcVisibleModelName(model,enhanced=!!selectionState?.enhanced){const ph=selectionState?.motorPhase||motorPhase?.value||'3Ph',on=!!enhanced&&keybfiEnhancedAllowed(ph);return keysuiteBfiPresentationAlias(keybfiPhaseModelName(model,ph,on));}
+function keychcVisibleModelName(model,enhanced=!!selectionState?.enhanced){const ph=selectionState?.motorPhase||motorPhase?.value||'3Ph',on=!!enhanced&&keybfiEnhancedAllowed(ph),material=document.getElementById('pumpMaterial')?.value||window.keysuiteExportPayload?.keysuite_material||'SS304';return keysuiteBfiPresentationAlias(keybfiMaterialModelName(keybfiPhaseModelName(model,ph,on),material));}
 function keychcEnhancedEnabled(){const el=document.getElementById('enhancedMode'),on=!!(el?el.checked:selectionState?.enhanced);return on&&keybfiEnhancedAllowed()}
 function keychcMixedRawPoint(curve,mix,i){
  const q=Number(curve.flow?.[i]),hf=Number(curve.head_per_stage?.[i]);if(!Number.isFinite(q)||!Number.isFinite(hf))return null;
@@ -1015,7 +1018,7 @@ function reportProjectTextV40300(){
 }
 
 function keysuiteBfiMaterialDisplay(){
- return {casing:'Stainless Steel 304',impeller:'Stainless Steel 304',shaft:'Stainless Steel 304'};
+ const payload=window.keysuiteExportPayload||{},external=window.__KEYSUITE_EXTERNAL_DATASHEET_EXPORT_ACTIVE__===true,raw=external?payload.keysuite_material:(document.getElementById('pumpMaterial')?.value||payload.keysuite_material),material=keybfiMaterialCode(raw),label=material==='SS316'?'Stainless Steel 316':'Stainless Steel 304';return {casing:label,impeller:label,shaft:label};
 }
 function keysuiteBfiSealDisplay(){
  const o=window.keysuiteExportPayload||{};
@@ -1757,6 +1760,7 @@ function keybfiHandleMotorEffChange(){
 }
 motorPhase.addEventListener("change",keybfiHandleMotorPhaseChange);
 motorEff.addEventListener("change",keybfiHandleMotorEffChange);
+document.getElementById('pumpMaterial')?.addEventListener('change',()=>{const material=keybfiMaterialCode(document.getElementById('pumpMaterial').value);window.keysuiteExportPayload={...(window.keysuiteExportPayload||{}),keysuite_material:material,material_variant:material==='SS316'?'BFIN':'BFI'};const best=selectionState.models[selectionState.selectedIndex];if(best){renderAlternatives();renderSelected();}});
 updateMotorVoltageRange();
 // V4.11.00 Telegram uses the real manual Selector with a preloaded D1.
 (function keychcAutoCurveRequest(){
@@ -1796,7 +1800,7 @@ alternatives.innerHTML='';
  const productFrame=new URLSearchParams(location.search).get('product')==='1';
  let productModelName='';
  if(productFrame){setTimeout(()=>window.parent?.postMessage({type:'KEYSUITE_PRODUCT_FRAME_READY',family:'BFI'},'*'),0)}
- function liveOptions(){const o=window.keysuiteExportPayload||{};return {keysuite_material:o.keysuite_material||'',keysuite_seal:o.keysuite_seal||'Car/Cer',keysuite_elastomer:o.keysuite_elastomer||'Viton',keysuite_connection_type:o.keysuite_connection_type||'threaded',keysuite_bare_shaft:!!o.keysuite_bare_shaft}}
+ function liveOptions(){const o=window.keysuiteExportPayload||{},material=keybfiMaterialCode(document.getElementById('pumpMaterial')?.value||o.keysuite_material);return {keysuite_material:material,material_variant:material==='SS316'?'BFIN':'BFI',keysuite_seal:o.keysuite_seal||'Car/Cer',keysuite_elastomer:o.keysuite_elastomer||'Viton',keysuite_connection_type:o.keysuite_connection_type||'threaded',keysuite_bare_shaft:!!o.keysuite_bare_shaft}}
  function syncControlsFromState(){
   try{flow.value=(selectionState.rawFlowText!==undefined&&selectionState.rawFlowText!==''?selectionState.rawFlowText:(selectionState.rawFlow??selectionState.q??''));head.value=(selectionState.rawHeadText!==undefined&&selectionState.rawHeadText!==''?selectionState.rawHeadText:(selectionState.rawHead??selectionState.h??''));fu.value=selectionState.flowUnit||'m3h';hu.value=selectionState.headUnit||'m';
    motorPhase.value=selectionState.motorPhase||'3Ph';motorEff.value=keysuiteBfiMotorEffForPhase(motorPhase.value);selectionState.motorEffClass=motorEff.value;updateMotorVoltageRange();
@@ -1817,9 +1821,9 @@ alternatives.innerHTML='';
   let evaluated=enhanced?evaluateEnhancedModel(model,q,0):evaluateModel(model,q,0,50);if(!evaluated){q=(Number(curve.flow?.[0]||0)+Number(curve.flow?.[curve.flow.length-1]||1))/2;evaluated=enhanced?evaluateEnhancedModel(model,q,0):evaluateModel(model,q,0,50)}if(!evaluated)return null;
   const h=Math.max(1,Math.floor(Number(evaluated.predHead)||0)),selectedEval=(enhanced?evaluateEnhancedModel(model,q,h):evaluateModel(model,q,h,50))||evaluated,hz=enhanced?KEYSUITE_ENHANCED_MAX_HZ:50,motorEffClass=keysuiteBfiMotorEffForPhase(phase);
   selectionState={q,h,hz,selectionHz:hz,curveHz:hz,rawFlow:q,rawHead:h,rawFlowText:String(q),rawHeadText:String(h),flowUnit:'m3h',headUnit:'m',motorEffClass,motorPhase:phase,motorVoltage:(phase==='1Ph'?240:415),models:[selectedEval],selectedIndex:0,productMode:true,enhanced};
-  if(motorPhase)motorPhase.value=phase;if(enhancedMode)enhancedMode.checked=enhanced;updateEnhancedModeUI();
-  const displayModel=keybfiPhaseModelName(model.model,phase,enhanced);
-  window.keysuiteExportPayload={quotation_model:displayModel,base_model:model.model,keysuite_material:'Stainless Steel 304',keysuite_seal:opts.seal||'Car/Cer',keysuite_elastomer:opts.elastomer||'Viton',keysuite_connection_type:'threaded',keysuite_bare_shaft:false,product_mode:true,enhanced};
+  if(motorPhase)motorPhase.value=phase;if(document.getElementById('pumpMaterial'))document.getElementById('pumpMaterial').value=keybfiMaterialCode(opts.material);if(enhancedMode)enhancedMode.checked=enhanced;updateEnhancedModeUI();
+  const material=keybfiMaterialCode(opts.material),displayModel=keybfiMaterialModelName(keybfiPhaseModelName(model.model,phase,enhanced),material);
+  window.keysuiteExportPayload={quotation_model:displayModel,base_model:model.model,keysuite_material:material,material_variant:material==='SS316'?'BFIN':'BFI',keysuite_seal:opts.seal||'Car/Cer',keysuite_elastomer:opts.elastomer||'Viton',keysuite_connection_type:'threaded',keysuite_bare_shaft:false,product_mode:true,enhanced};
   syncControlsFromState();renderAlternatives();renderSelected();const payload=currentSelection();window.parent?.postMessage({type:'KEYSUITE_PRODUCT_CURVE_STATE',family:'BFI',model:model.model,display_model:displayModel,flowM3h:q,headM:h,enhanced,valid:true,message:'Curve loaded. Enter Flow + Head to set a duty point.'},'*');return payload;
  }
  function applyProductDuty(flowM3h,headM,meta={}){

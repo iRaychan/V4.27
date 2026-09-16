@@ -308,9 +308,10 @@
 
   function normalizeBfiPriceIdentity(model,phase=''){
     const raw=String(model||'').trim(),tail=(raw.match(/[TE]+$/i)||[''])[0],suffix=/E/i.test(tail)?'E':(/T/i.test(tail)?'T':'');
-    const base=tail?raw.slice(0,-tail.length).trim():raw;
+    const material=/^BFIN\b/i.test(raw)?'SS316':'SS304',withoutVariant=raw.replace(/^BFIN\b/i,'BFI');
+    const base=tail?withoutVariant.slice(0,-tail.length).trim():withoutVariant;
     const requested=suffix==='E'||suffix==='T'?'3Ph':(String(phase||'').trim()||'3Ph');
-    return {raw,base,suffix,phase:requested==='1Ph'?'1Ph':'3Ph'};
+    return {raw,base,suffix,material,phase:requested==='1Ph'?'1Ph':'3Ph'};
   }
   function bfiPriceStatus(model,phase='3Ph',options={}){
     const customer=options.customer||quotationCustomer(),cat=options.category||categoryForCustomer(customer),identity=normalizeBfiPriceIdentity(model,phase);
@@ -341,7 +342,8 @@
   function findBfiPrice(model,phase='3Ph',options={}){
     const status=bfiPriceStatus(model,phase,options);if(!status.ok)return null;
     const {product,variant,customer,category:cat}=status,baseCalc=calculatePrice(product.pricesByCurrency||{},variant,cat,'BFI',{...options,customer,rarityBook:product.rarityByCurrency||{}}),defaultMotorEfficiency=variant==='1Ph'?'IE1':'IE2',selectedMotorEfficiency=String(options.motor_efficiency_class||options.motorEfficiencyClass||options.motor_efficiency||defaultMotorEfficiency).toUpperCase(),calc=applyPumpMotorReplacement(baseCalc,{...options,customer,category:cat,motor_hp:Number((options.motor_hp??product.motor_hp)||0),pole:Number(options.pole||2),motor_efficiency_class:selectedMotorEfficiency},defaultMotorEfficiency);
-    return calc?{product,material:variant,variant,rarity:calc.rarity,calc,category:cat,customer,family:'BFI',sourceExtra:{motor_phase:variant,bfi_identity_suffix:status.identity?.suffix||'',default_motor_efficiency_class:defaultMotorEfficiency,selected_motor_efficiency_class:selectedMotorEfficiency,motor_hp:Number((options.motor_hp??product.motor_hp)||0),motor_pole:Number(options.pole||2),...(calc.motorReplacement?{motor_replacement:calc.motorReplacement}: {})}}:null;
+    const pumpMaterial=/316/.test(String(options.material||status.identity?.material||''))?'SS316':'SS304';
+    return calc?{product,material:pumpMaterial,variant,rarity:calc.rarity,calc,category:cat,customer,family:'BFI',sourceExtra:{motor_phase:variant,pump_material:pumpMaterial,material_variant:pumpMaterial==='SS316'?'BFIN':'BFI',bfi_identity_suffix:status.identity?.suffix||'',default_motor_efficiency_class:defaultMotorEfficiency,selected_motor_efficiency_class:selectedMotorEfficiency,motor_hp:Number((options.motor_hp??product.motor_hp)||0),motor_pole:Number(options.pole||2),...(calc.motorReplacement?{motor_replacement:calc.motorReplacement}: {})}}:null;
   }
 
   function findGwsPrice(model,pressure,options={}){
