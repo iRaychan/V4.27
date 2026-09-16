@@ -624,11 +624,12 @@ function esPricingMaterial(value:any){
   if(!raw||/^standard$/i.test(raw))return 'CI / SS / SS / MS';return raw;
 }
 function materialKey(value:any){return String(value||'').toUpperCase().replace(/[^A-Z0-9]+/g,'')}
+function pumpUsesIe1Motor(item:any){const hp=Number(item?.motor_hp||0),kw=Number(item?.motor_kw||0);return hp>0?hp<=0.75+1e-9:kw>0&&kw<=0.75*0.746+1e-9}
 function applyPumpOptionsToItem(item:any,options:any){
   const oldOptions=pumpOptions(item?.options,item?.qty),o=pumpOptions(options,item?.qty),family=String(item?.family||'').toUpperCase();let model=String(item?.model||''),displayModel=String(item?.display_model||'');
   const previousMaterial=oldOptions.material;
-  const priceGroup=pumpPriceGroup(item),defaultMotorEfficiency=family==='BFI'?(/1\s*ph/i.test(String(item?.motor_phase||item?.phase||''))?'IE1':'IE2'):(family==='CHC'?(priceGroup==='CHC_G1'?'IE2':'IE3'):String(item?.motor_efficiency_class||o.motor_efficiency||'IE3').toUpperCase());
-  if(!o.motor_efficiency_explicit&&!item?.options?.motor_efficiency_explicit)o.motor_efficiency=defaultMotorEfficiency;
+  const priceGroup=pumpPriceGroup(item),smallMotorIe1=(family==='CHC'||family==='BFI')&&pumpUsesIe1Motor(item),defaultMotorEfficiency=smallMotorIe1?'IE1':family==='BFI'?(/1\s*ph/i.test(String(item?.motor_phase||item?.phase||''))?'IE1':'IE2'):(family==='CHC'?(priceGroup==='CHC_G1'?'IE2':'IE3'):String(item?.motor_efficiency_class||o.motor_efficiency||'IE3').toUpperCase());
+  if(smallMotorIe1){o.motor_efficiency='IE1';o.motor_efficiency_explicit=false}else if(!o.motor_efficiency_explicit&&!item?.options?.motor_efficiency_explicit)o.motor_efficiency=defaultMotorEfficiency;
   if(family==='CHC'){
     model=chcVariantModel(model,o.material);
     if(displayModel)displayModel=chcVariantModel(displayModel,o.material);
@@ -649,7 +650,7 @@ function applyPumpOptionsToItem(item:any,options:any){
   }else if(family==='BFI'){
     const identity=String(displayModel||item?.quotation_model||''),enhanced=!!item?.enhanced||/E$/i.test(identity),phase=enhanced?'3Ph':(String(item?.motor_phase||'1Ph')==='3Ph'?'3Ph':'1Ph'),base=String(item?.base_model||model).replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,'').trim();
     const clean=String(displayModel||base).replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,''),phaseDisplay=enhanced?`${clean}E`:phase==='3Ph'?`${clean}T`:clean,display=bfiVariantModel(phaseDisplay,o.material);
-    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.keysuite_material=o.material==='SS316'?'Stainless Steel 316':'Stainless Steel 304';next.material_variant=o.material==='SS316'?'BFIN':'BFI';next.motor_phase=phase;next.default_motor_efficiency_class=phase==='1Ph'?'IE1':'IE2';next.motor_efficiency_class=o.motor_efficiency;next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
+    next.model=base;next.base_model=base;next.display_model=display;next.quotation_model=display;next.keysuite_material=o.material==='SS316'?'Stainless Steel 316':'Stainless Steel 304';next.material_variant=o.material==='SS316'?'BFIN':'BFI';next.motor_phase=phase;next.default_motor_efficiency_class=smallMotorIe1?'IE1':phase==='1Ph'?'IE1':'IE2';next.motor_efficiency_class=o.motor_efficiency;next.enhanced=enhanced;next.enhanced_curve=enhanced;next.rpm=enhanced?3480:Number(next.rpm||2900);next.frequency_hz=enhanced?60:Number(next.frequency_hz||50);next.options={...o,motor_efficiency:next.motor_efficiency_class};
     if(item?.pricing_model)next.pricing_model=String(item.pricing_model).replace(/[TE]$/i,'');
   }else if(family==='ES')next.pricing_material=esPricingMaterial(o.material);
   if(family==='CHC'){next.default_motor_efficiency_class=defaultMotorEfficiency;next.motor_efficiency_class=o.motor_efficiency;next.options={...o,motor_efficiency:next.motor_efficiency_class};}
@@ -1156,10 +1157,10 @@ async function guidedSizeSelectedProducts(service:any,companyId:string,products:
   const seen=new Set<string>(),dedup=out.sort(guidedSelectionCandidateCompare).filter((x:any)=>{const k=[x?.product?.key,x?.display_model||x?.model,x?.pole||0].join('|');if(seen.has(k))return false;seen.add(k);return true});return dedup.slice(0,Math.max(1,Math.min(240,Number(totalLimit)||12)));
 }
 function keybotFastPriceModelKey(group:any,value:any){let model=String(value||'').trim();const g=String(group||'').toUpperCase();if(g==='BFI')model=model.replace(/^HMS\b/i,'BFI').replace(/[TE]$/i,'');else if(g==='ES')model=model.replace(/^ES\s+/i,'');else if(['CHC_G1','CHC_G2'].includes(g))model=model.replace(/^(?:CHCS|CHCN|VMS|SVM)\b/i,'CHC');return cleanSearch(model)}
-function keybotFastPriceRowMeta(group:any,row:any){
+function keybotFastPriceRowMeta(group:any,row:any,material:any=''){
   const g=String(group||'').toUpperCase();let entries:any[]=[];
   if(['CHC_G1','CHC_G2'].includes(g))entries=['usd','rmb','myr'].map(c=>({price:Number(row?.[`chc_${c}`]||0),rarity:pricingRarity(row?.[`chc_rarity_${c}`]||'common')}));
-  else if(g==='BFI')entries=['usd','rmb','myr'].flatMap(c=>['1ph','3ph'].map(ph=>({price:Number(row?.[`price_${c}_${ph}`]||0),rarity:pricingRarity(row?.[`rarity_${c}_${ph}`]||'common')})));
+  else if(g==='BFI'){const bfin=/316|BFIN/i.test(String(material||'')),prefix=bfin?'bfin_':'';entries=['usd','rmb','myr'].flatMap(c=>['1ph','3ph'].map(ph=>({price:Number(row?.[`price_${prefix}${c}_${ph}`]||0),rarity:pricingRarity(row?.[`rarity_${prefix}${c}_${ph}`]||'common')})));}
   else if(g==='ES'){const variants=Array.isArray(row?.variants)?row.variants:[];entries=variants.flatMap((v:any)=>['Usd','Rmb','Myr'].map(c=>({price:Number(v?.[`price${c}`]||0),rarity:pricingRarity(row?.rarity||v?.rarity||'common')})));}
   const priced=entries.filter((x:any)=>x.price>0);return {hasPrice:priced.length>0,isCommon:priced.some((x:any)=>x.rarity==='common')};
 }
@@ -1169,7 +1170,7 @@ async function keybotFastStockPriorityCandidates(service:any,candidates:any[]){
 }
 async function keybotFastStockCandidatePools(service:any,candidates:any[]){
   const cache=new Map<string,any[]>(),evaluated:any[]=[];
-  for(const candidate of candidates||[]){const product=candidate?.product,group=String(product?.price_group||'').toUpperCase();if(!['CHC_G1','CHC_G2','BFI','ES'].includes(group))continue;let rows=cache.get(group);if(!rows){try{rows=await guidedCatalogRows(service,product)}catch(_){rows=[]}cache.set(group,rows||[])}const keys=guidedUnique([candidate?.pricing_model,candidate?.model,candidate?.display_model].map((x:any)=>keybotFastPriceModelKey(group,x)).filter(Boolean)),row=(rows||[]).find((r:any)=>keys.includes(keybotFastPriceModelKey(group,r?.model))),hasPrice=!!row&&keybotFastPriceRowMeta(group,row).hasPrice;evaluated.push({...candidate,keybot_price_available:hasPrice,keybot_stock_status:hasPrice?'hot':'cold'});}
+  for(const candidate of candidates||[]){const product=candidate?.product,group=String(product?.price_group||'').toUpperCase();if(!['CHC_G1','CHC_G2','BFI','ES'].includes(group))continue;let rows=cache.get(group);if(!rows){try{rows=await guidedCatalogRows(service,product)}catch(_){rows=[]}cache.set(group,rows||[])}const keys=guidedUnique([candidate?.pricing_model,candidate?.model,candidate?.display_model].map((x:any)=>keybotFastPriceModelKey(group,x)).filter(Boolean)),row=(rows||[]).find((r:any)=>keys.includes(keybotFastPriceModelKey(group,r?.model))),candidateMaterial=candidate?.options?.material||candidate?.keysuite_material||candidate?.material_variant||candidate?.display_model,hasPrice=!!row&&keybotFastPriceRowMeta(group,row,candidateMaterial).hasPrice;evaluated.push({...candidate,keybot_price_available:hasPrice,keybot_stock_status:hasPrice?'hot':'cold'});}
   const hot=evaluated.filter((x:any)=>x.keybot_price_available===true).sort(guidedSelectionCandidateCompare).slice(0,6),cold=evaluated.filter((x:any)=>x.keybot_price_available!==true).sort(guidedSelectionCandidateCompare).slice(0,6);
   return {hot,cold};
 }
@@ -1552,6 +1553,7 @@ async function requireCustomerPriceAssignment(service:any,customerId:string,user
 }
 function pumpIncludedMotorEfficiency(item:any,priceGroup:string){
   const family=String(item?.family||'').toUpperCase();
+  if((family==='CHC'||family==='BFI')&&pumpUsesIe1Motor(item))return 'IE1';
   if(family==='BFI')return /1\s*ph/i.test(String(item?.motor_phase||item?.phase||''))?'IE1':'IE2';
   if(family==='CHC')return normalizeKeyAiPriceGroup(priceGroup)==='CHC_G1'?'IE2':'IE3';
   return String(item?.default_motor_efficiency_class||item?.motor_efficiency_class||'IE3').toUpperCase();
@@ -1616,9 +1618,9 @@ async function quotePumpForCustomer(service:any,customerId:string,item:any,keySu
     }
     rarity='';
   }else if(family==='BFI'){
-    const full=String(item?.model||'').replace(/[TE]$/i,'').trim(),phase=/1\s*ph/i.test(String(item?.motor_phase||item?.phase||item?.options?.phase||''))?'1ph':'3ph';
-    const productRes=await service.from('ks_products_bfi').select('*').ilike('model',full).maybeSingle();if(productRes.error||!productRes.data)throw new Error(`No BFI price-list record was found for ${full}.`);const p:any=productRes.data;productId=String(p.id||'');rarity='';
-    candidates=['USD','RMB','MYR'].map(currency=>{const c=currency.toLowerCase();return {currency,sourcePrice:Number(p[`price_${c}_${phase}`]||0),multiplier:(rates as any)[currency],rarity:p[`rarity_${c}_${phase}`]||'common'}});
+    const rawModel=String(item?.model||item?.display_model||''),isBfin=/^BFIN\b/i.test(rawModel)||/316|BFIN/i.test(String(item?.options?.material||item?.keysuite_material||item?.material_variant||'')),priceSeries=isBfin?'BFIN':'BFI',full=rawModel.replace(/^BFIN\b/i,'BFI').replace(/[TE]$/i,'').trim(),phase=/1\s*ph/i.test(String(item?.motor_phase||item?.phase||item?.options?.phase||''))?'1ph':'3ph',prefix=isBfin?'bfin_':'';
+    const productRes=await service.from('ks_products_bfi').select('*').ilike('model',full).maybeSingle();if(productRes.error||!productRes.data)throw new Error(`No ${priceSeries} price-list record was found for ${rawModel||full}.`);const p:any=productRes.data;productId=String(p.id||'');rarity='';material=isBfin?'SS316':'SS304';
+    candidates=['USD','RMB','MYR'].map(currency=>{const c=currency.toLowerCase();return {currency,sourcePrice:Number(p[`price_${prefix}${c}_${phase}`]||0),multiplier:(rates as any)[currency],rarity:p[`rarity_${prefix}${c}_${phase}`]||'common'}});
   }else if(family==='ES'){
     const full=String(item?.model||'').trim(),stripped=full.replace(/^ES\s+/i,'').trim();let productRes=await service.from('ks_products_es').select('*').ilike('model',stripped).maybeSingle();if((productRes.error||!productRes.data)&&full!==stripped)productRes=await service.from('ks_products_es').select('*').ilike('model',full).maybeSingle();if(productRes.error||!productRes.data)throw new Error(`No ES price-list record was found for ${full}.`);const p:any=productRes.data;productId=String(p.id||'');rarity=pricingRarity(p.rarity||'common');
     const variants=Array.isArray(p.variants)?p.variants:[],rawRequested=String(item?.pricing_material||item?.keysuite_material||item?.options?.material||'').trim(),requested=esPricingMaterial(rawRequested),requestedKey=materialKey(requested);
@@ -1716,7 +1718,7 @@ async function guidedSendExactRatedCurve(service:any,telegramToken:string,compan
 function directBfiModelInfo(model:any){
   const input=String(model||'').trim(),explicitEnhanced=/E$/i.test(input),explicit3=explicitEnhanced||/T$/i.test(input),wanted=input.replace(/[TE]$/i,'').toUpperCase(),db:any=(globalThis as any).KeySuiteBFIData,row=(db?.models||[]).find((x:any)=>String(x.model||'').toUpperCase()===wanted);if(!row)return null;
   const phases=Array.isArray(row.phases)&&row.phases.length?row.phases:['3Ph'];let phase=explicit3?'3Ph':'1Ph';if(!phases.includes(phase))phase=phases.includes('3Ph')?'3Ph':String(phases[0]||'1Ph');
-  const enhanced=explicitEnhanced&&phase==='3Ph',base=String(row.model||'').replace(/[TE]$/i,''),display=enhanced?`${base}E`:phase==='3Ph'?`${base}T`:base,motorEff=phase==='1Ph'?'IE1':'IE2';
+  const enhanced=explicitEnhanced&&phase==='3Ph',base=String(row.model||'').replace(/[TE]$/i,''),display=enhanced?`${base}E`:phase==='3Ph'?`${base}T`:base,motorEff=Number(row.motor_hp||0)>0&&Number(row.motor_hp)<=0.75+1e-9?'IE1':phase==='1Ph'?'IE1':'IE2';
   return {family:'BFI',brand:'B.G.Reich',series:String(row.series||'BFI'),model:base,base_model:base,display_model:display,quotation_model:display,motor_kw:Number(row.motor_kw||0),motor_hp:Number(row.motor_hp||0),motor_efficiency_class:motorEff,pole:2,rpm:enhanced?3480:2900,frequency_hz:enhanced?60:50,stages:Number(row.stages||0),connection:String(row.connection||'-'),inlet:String(row.inlet||'-'),outlet:String(row.outlet||'-'),max_pressure_bar:Number(row.max_pressure_bar||0),weight_kg:Number(row.weight_kg||0),motor_phase:phase,enhanced,enhanced_curve:enhanced};
 }
 function directPumpInfo(model:any){const text=String(model||'');if(/^BFI\b/i.test(text))return directBfiModelInfo(text);if(/^CHC\b|^VMS\b/i.test(text))return directChcModelInfo(text);return null}
@@ -2051,7 +2053,7 @@ async function sendSimpleCurve(service:any,telegramToken:string,companyId:string
   }
 
   const resolvedFamily=family==='CHC'&&req.chc_scope==='CHC_G1'?'CHC_G1':family==='CHC'&&req.chc_scope==='CHC_G2'?'CHC_G2':family;
-  try{const preferred=resolvedFamily==='BFI'?(await keybotPreferredBfiDutyCandidates(service,q,h))[0]:null,forcedModel=String(preferred?.model||'').trim(),stockStatus=String(preferred?.keybot_stock_status||''),pdfMeta=await generateCurvePdf(resolvedFamily,q,h,display.duty_text,env('KEYSUITE_PUBLIC_URL'),pole,forcedModel),sent=await telegramSendDocument(telegramToken,chatId,pdfMeta.bytes,pdfMeta.filename,`${resolvedFamily==='ES'?esPoleLabel(pole):resolvedFamily} curve ready\n${display.duty_text}\nSelected: ${pdfMeta.model}${stockStatus==='cold'?' · Cold Item':''}`);let item:any=selectPumpSummary(resolvedFamily,q,h,pole,forcedModel);item=applyPumpOptionsToItem({...item,qty:Math.max(1,Number(req.qty||1)),...(stockStatus?{keybot_stock_status:stockStatus}: {})},opts);const saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'curve',step:'curve_result',flow_m3h:q,head_m:h,selected_customer_id:null,context:{pending_request:req,pending_item:item,curve_pdf:{family:resolvedFamily,pole,q,h,duty:display.duty_text,filename:pdfMeta.filename}}});await telegramSend(telegramToken,chatId,sent.ok?'Curve ready.':'The curve was prepared but Telegram could not send the PDF.',simpleCurveMenu());return saved}catch(error){await telegramSend(telegramToken,chatId,`KeyBot could not generate this curve.\n\n${error instanceof Error?error.message:String(error)}`,mainMenuMarkup());return session}
+  try{const preferred=resolvedFamily==='BFI'?(await keybotPreferredBfiDutyCandidates(service,q,h))[0]:null,forcedModel=String(preferred?.model||'').trim(),stockStatus=String(preferred?.keybot_stock_status||'');let item:any=selectPumpSummary(resolvedFamily,q,h,pole,forcedModel);item=applyPumpOptionsToItem({...item,qty:Math.max(1,Number(req.qty||1)),...(stockStatus?{keybot_stock_status:stockStatus}: {})},opts);const identity={...item,model:item.display_model||item.quotation_model||item.model,material:pumpOptions(item.options,item.qty).material},pdfMeta=await generateCurvePdf(resolvedFamily,q,h,display.duty_text,env('KEYSUITE_PUBLIC_URL'),pole,forcedModel,identity),sent=await telegramSendDocument(telegramToken,chatId,pdfMeta.bytes,pdfMeta.filename,`${resolvedFamily==='ES'?esPoleLabel(pole):resolvedFamily} curve ready\n${display.duty_text}\nSelected: ${pdfMeta.model}${stockStatus==='cold'?' · Cold Item':''}`),saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'curve',step:'curve_result',flow_m3h:q,head_m:h,selected_customer_id:null,context:{pending_request:req,pending_item:item,curve_pdf:{family:resolvedFamily,pole,q,h,duty:display.duty_text,filename:pdfMeta.filename}}});await telegramSend(telegramToken,chatId,sent.ok?'Curve ready.':'The curve was prepared but Telegram could not send the PDF.',simpleCurveMenu());return saved}catch(error){await telegramSend(telegramToken,chatId,`KeyBot could not generate this curve.\n\n${error instanceof Error?error.message:String(error)}`,mainMenuMarkup());return session}
 }
 
 async function sendSimplePumpPrice(service:any,telegramToken:string,companyId:string,chatId:string,senderId:string,session:any,customer:any,user:any,request:any){
@@ -2107,7 +2109,7 @@ Deno.serve(async(req)=>{
       if((family!=='CHC'&&family!=='BFI'&&family!=='ES')||!(q>0&&h>0))return json({ok:false,error:'This enquiry does not contain a complete curve request.'},400);
       if(family==='ES'&&pole!==2&&pole!==4)return json({ok:false,error:'ES pole information is missing.'},400);
       const dutyText=String(d.duty_text||dutyDisplay(String(row.raw_message||''),q,h).duty_text);
-      const pdfMeta=await generateCurvePdf(family,q,h,dutyText,env('KEYSUITE_PUBLIC_URL'),family==='ES'?pole:0);
+      const pdfMeta=await generateCurvePdf(family,q,h,dutyText,env('KEYSUITE_PUBLIC_URL'),family==='ES'?pole:0,'',{material:d.material||d.pump_material||''});
       return new Response(pdfMeta.bytes,{status:200,headers:{...corsHeaders,'Content-Type':'application/pdf','Content-Disposition':`inline; filename="${pdfMeta.filename}"`,'Cache-Control':'no-store'}});
     }
 
@@ -2259,7 +2261,7 @@ Deno.serve(async(req)=>{
     if(menuText||callbackData==='menu:home'){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.04'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.05'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2385,7 +2387,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.04'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.05'});
     }
 
     if(newRequestButton){
@@ -2790,7 +2792,7 @@ ${keyplcBomText(bom)}`,keyplcManifoldMenu(bom));return json({ok:true,status:'key
 
     if(curvePdfButton){
       const c=sessionContext(session),item=c.pending_item;if(!item||!['CHC','BFI','ES'].includes(String(item.family||'').toUpperCase())){await telegramSend(telegramToken,chatId,'There is no pump curve waiting to be generated. Please make a pump selection first.',mainMenuMarkup());return json({ok:true,status:'curve_pdf_no_selection'})}
-      try{const family=String(item.family).toUpperCase(),q=Number(item.requested_flow_m3h||session?.flow_m3h),h=Number(item.requested_head_m||session?.head_m),pole=family==='ES'?Number(item.pole||2):0,duty=sessionDutyText(session,item),pdfMeta=await generateCurvePdf(family,q,h,duty,env('KEYSUITE_PUBLIC_URL'),pole);await telegramSendDocument(telegramToken,chatId,pdfMeta.bytes,pdfMeta.filename,`${family==='ES'?esPoleLabel(pole):family} curve ready\n${duty}\nSelected: ${pdfMeta.model}`);await telegramSend(telegramToken,chatId,'What would you like to do with this selection?',pumpResultMenu(session?.mode==='price'?'price':'curve'));return json({ok:true,status:'curve_pdf_sent',model:pdfMeta.model})}catch(error){await telegramSend(telegramToken,chatId,`Curve PDF could not be generated.\n\n${error instanceof Error?error.message:String(error)}`,pumpResultMenu(session?.mode==='price'?'price':'curve'));return json({ok:true,status:'curve_pdf_error'})}
+      try{const family=String(item.family).toUpperCase(),q=Number(item.requested_flow_m3h||session?.flow_m3h),h=Number(item.requested_head_m||session?.head_m),pole=family==='ES'?Number(item.pole||2):0,duty=sessionDutyText(session,item),identity={...item,model:item.display_model||item.quotation_model||item.model,material:pumpOptions(item.options,item.qty).material},pdfMeta=await generateCurvePdf(family,q,h,duty,env('KEYSUITE_PUBLIC_URL'),pole,String(item.model||''),identity);await telegramSendDocument(telegramToken,chatId,pdfMeta.bytes,pdfMeta.filename,`${family==='ES'?esPoleLabel(pole):family} curve ready\n${duty}\nSelected: ${pdfMeta.model}`);await telegramSend(telegramToken,chatId,'What would you like to do with this selection?',pumpResultMenu(session?.mode==='price'?'price':'curve'));return json({ok:true,status:'curve_pdf_sent',model:pdfMeta.model})}catch(error){await telegramSend(telegramToken,chatId,`Curve PDF could not be generated.\n\n${error instanceof Error?error.message:String(error)}`,pumpResultMenu(session?.mode==='price'?'price':'curve'));return json({ok:true,status:'curve_pdf_error'})}
     }
 
 
@@ -2805,7 +2807,7 @@ ${keyplcBomText(bom)}`,keyplcManifoldMenu(bom));return json({ok:true,status:'key
       const returnStep=session?.mode==='price'?'price_result':session?.mode==='quotation'?'quote_result':'curve_result';const optionMode=session?.mode==='price'?'price':session?.mode==='quotation'?'quotation':'curve';session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:optionMode,step:'pump_options',context:{...c,option_return_step:returnStep,pending_item:applyPumpOptionsToItem(item,pumpOptions(item.options,item.qty))}});await telegramSend(telegramToken,chatId,`⚙️ Pump Options\n\n${pumpOptionSummary(sessionContext(session).pending_item)}\n\nChoose only what you want to change.`,pumpOptionsMenu());return json({ok:true,status:'pump_options'});
     }
     if(materialButton&&session?.step==='pump_options'){const c=sessionContext(session);await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_material',context:c});await telegramSend(telegramToken,chatId,'Choose Material:',telegramReplyKeyboard([['Standard','SS304','SS316'],['⬅️ Options']]));return json({ok:true,status:'pump_option_material'})}
-    if(motorButton&&session?.step==='pump_options'){const c=sessionContext(session);await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_motor',context:c});await telegramSend(telegramToken,chatId,'Choose Motor Efficiency:',telegramReplyKeyboard([['IE3','IE4'],['IE5','IE2'],['⬅️ Options']]));return json({ok:true,status:'pump_option_motor'})}
+    if(motorButton&&session?.step==='pump_options'){const c=sessionContext(session),small=(String(c.pending_item?.family||'').toUpperCase()==='CHC'||String(c.pending_item?.family||'').toUpperCase()==='BFI')&&pumpUsesIe1Motor(c.pending_item);if(small){await telegramSend(telegramToken,chatId,'Motors rated 0.75 HP or below use IE1.',pumpOptionsMenu());return json({ok:true,status:'pump_option_motor_ie1_required'})}await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_motor',context:c});await telegramSend(telegramToken,chatId,'Choose Motor Efficiency:',telegramReplyKeyboard([['IE3','IE4'],['IE5','IE2'],['⬅️ Options']]));return json({ok:true,status:'pump_option_motor'})}
     if(sealButton&&session?.step==='pump_options'){const c=sessionContext(session);await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_seal',context:c});await telegramSend(telegramToken,chatId,'Choose Mechanical Seal:',telegramReplyKeyboard([['Carbon/SiC','SiC/SiC'],['TC/TC'],['⬅️ Options']]));return json({ok:true,status:'pump_option_seal'})}
     if(elastomerButton&&session?.step==='pump_options'){const c=sessionContext(session);await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_elastomer',context:c});await telegramSend(telegramToken,chatId,'Choose Elastomer:',telegramReplyKeyboard([['Viton','EPDM','NBR'],['⬅️ Options']]));return json({ok:true,status:'pump_option_elastomer'})}
     if(connectionButton&&session?.step==='pump_options'){const c=sessionContext(session);await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:session.mode,step:'pump_option_connection',context:c});await telegramSend(telegramToken,chatId,'Choose Connection:',telegramReplyKeyboard([['Round Flange','Oval Flange'],['⬅️ Options']]));return json({ok:true,status:'pump_option_connection'})}

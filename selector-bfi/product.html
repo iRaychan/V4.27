@@ -329,9 +329,10 @@ const MOTOR_DB=(()=>{
 })();
 function motorValue(v,suffix=""){if(v===null||v===undefined||v===""||v==="-")return "-";return `${Number(v).toFixed(Number(v)%1===0?0:2).replace(/\.00$/,"").replace(/(\.\d)0$/,"$1")}${suffix}`;}
 function keysuiteBfiMotorEffForPhase(phase){return String(phase||'3Ph')==='1Ph'?'IE1':'IE2'}
+function keysuiteBfiAutoMotorEff(hp,phase){const normal=keysuiteBfiMotorEffForPhase(phase),small=Number(hp)>0&&Number(hp)<=0.75+1e-9,ie1=Array.from(motorEff.options||[]).find(o=>o.value==='IE1');if(small){if(motorEff.dataset.autoSmallIe1!=='1')motorEff.dataset.beforeSmallIe1=motorEff.value||normal;motorEff.dataset.autoSmallIe1='1';if(ie1)ie1.disabled=false;motorEff.value='IE1';return 'IE1'}if(motorEff.dataset.autoSmallIe1==='1'){motorEff.value=motorEff.dataset.beforeSmallIe1||normal;delete motorEff.dataset.autoSmallIe1;delete motorEff.dataset.beforeSmallIe1}if(ie1)ie1.disabled=String(phase||'3Ph')!=='1Ph';return motorEff.value||normal}
 function keysuiteBfiMotorDbClass(effClass){return String(effClass||'').toUpperCase()==='IE1'?'IE':String(effClass||'IE2').toUpperCase()}
 function keybfiBaseModelName(model){return String(model||'').trim().replace(/^BFIN\b/i,'BFI').replace(/[TE]+$/i,'').trim()}
-function keybfiMaterialCode(value){return /316/.test(String(value||''))?'SS316':'SS304'}
+function keybfiMaterialCode(value){return /316|\bBFIN\b/i.test(String(value||''))?'SS316':'SS304'}
 function keybfiMaterialModelName(model,material){const raw=String(model||'').replace(/^BFIN\b/i,'BFI');return keybfiMaterialCode(material)==='SS316'?raw.replace(/^BFI\b/i,'BFIN'):raw}
 function keybfiEnhancedAllowed(phase){return String(phase||selectionState?.motorPhase||motorPhase?.value||'3Ph')==='3Ph'}
 function keybfiPhaseModelName(model,phase,enhanced=false){const raw=keybfiBaseModelName(model),ph=String(phase||selectionState?.motorPhase||'3Ph');if(ph==='3Ph'&&enhanced)return raw+'E';return ph==='3Ph'?raw+'T':raw}
@@ -1098,7 +1099,7 @@ function exportPDF(requestedFilename){
  const requiredEff=Math.max(1,Math.min(100,fitValue(best.effFit,pumpQ)));
  const requiredPower=enhanced?Math.max(0,fitValue(best.powerFit,pumpQ)):9.81*pumpQ*requiredHead/3600/(requiredEff/100);
  const requiredNpsh=Math.max(0,fitValue(best.npshFit,pumpQ));
- const motorEffClass=motorEff.value;
+ const motorEffClass=keysuiteBfiAutoMotorEff(best.motor_hp,motorPhase.value);
  const motorPhaseCode=motorPhase.value;
  const motorVoltageValue=Number(motorVoltage.value);
  const motorData=findMotorData(best.motor_hp,motorEffClass,motorPhaseCode,motorVoltageValue,enhanced?50:hz);

@@ -609,7 +609,11 @@ function drawPage3ES(page:any,logo:any,font:any,bold:any,a:any,dimImage:any){
 }
 function materialFor(fam:string,option:any=''){
   const m=String(option||'').toUpperCase().replace(/\s+/g,'');
-  if(isBfiFamily(fam))return {casing:'Stainless Steel 304',impeller:'Stainless Steel 304',shaft:'Stainless Steel 304',seal:'Mechanical Seal'};
+  if(isBfiFamily(fam)){
+    const ss316=m==='SS316'||m==='STAINLESSSTEEL316'||m.startsWith('BFIN');
+    const label=ss316?'Stainless Steel 316':'Stainless Steel 304';
+    return {casing:label,impeller:label,shaft:label,seal:'Mechanical Seal'};
+  }
   if(isChcFamily(fam)){
     if(m==='SS316')return {casing:'SS316',impeller:'SS316',shaft:'SS316',seal:'Mechanical Seal'};
     if(m==='SS304')return {casing:'SS304',impeller:'SS304',shaft:'SS304',seal:'Mechanical Seal'};
@@ -626,12 +630,12 @@ export function selectPumpSummary(family:string,q:number,h:number,esPole=0,force
   if(isChcFamily(fam)){
     const engine=chcEngine(fam),s:any=selectChc(Number(q),Number(h),forcedModel,fam);
     if(!s)throw new Error(`No ${engine.label} model can meet ${fmt(q)} m³/hr @ ${fmt(h)} Mtr.`);
-    return {brand:'B.G.Reich',family:'CHC',series:engine.label,generation_code:engine.generation,keysuite_generation_code:engine.generation,model:String(s.model||''),motor_kw:Number(s.motor_kw||0),motor_hp:Number(s.motor_hp||0),efficiency:Number(s.eff||0),npshr:Number(s.npsh||0),rpm:Number(s.rpm||engine.db?.curves?.[s.series]?.speed_rpm||2900),pole:2,stages:Number(s.stages||0),connection:String(s.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:engine.core.VERSION};
+    return {brand:'B.G.Reich',family:'CHC',series:engine.label,generation_code:engine.generation,keysuite_generation_code:engine.generation,model:String(s.model||''),motor_kw:Number(s.motor_kw||0),motor_hp:Number(s.motor_hp||0),motor_efficiency_class:Number(s.motor_hp||0)>0&&Number(s.motor_hp)<=0.75+1e-9?'IE1':String(engine.motorEff||'IE3'),efficiency:Number(s.eff||0),npshr:Number(s.npsh||0),rpm:Number(s.rpm||engine.db?.curves?.[s.series]?.speed_rpm||2900),pole:2,stages:Number(s.stages||0),connection:String(s.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:engine.core.VERSION};
   }
   if(isBfiFamily(fam)){
     const s:any=selectBfi(Number(q),Number(h),forcedModel);if(!s)throw new Error(`No BFI model can meet ${fmt(q)} m³/hr @ ${fmt(h)} Mtr.`);
     const base=String(s.model||'').replace(/T$/i,''),phases=Array.isArray(s.phases)&&s.phases.length?s.phases:['3Ph'],phase=phases.includes('3Ph')?'3Ph':String(phases[0]||'1Ph'),display=phase==='3Ph'?`${base}T`:base;
-    return {brand:'B.G.Reich',family:'BFI',series:String(s.series||'BFI'),model:base,base_model:base,display_model:display,quotation_model:display,motor_phase:phase,motor_efficiency_class:phase==='1Ph'?'IE1':'IE2',motor_kw:Number(s.motor_kw||0),motor_hp:Number(s.motor_hp||0),efficiency:Number(s.eff||0),npshr:Number(s.npsh||0),rpm:Number(s.rpm||2900),pole:2,stages:Number(s.stages||0),connection:String(s.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:BFI_CORE.VERSION};
+    return {brand:'B.G.Reich',family:'BFI',series:String(s.series||'BFI'),model:base,base_model:base,display_model:display,quotation_model:display,motor_phase:phase,motor_efficiency_class:Number(s.motor_hp||0)>0&&Number(s.motor_hp)<=0.75+1e-9?'IE1':phase==='1Ph'?'IE1':'IE2',motor_kw:Number(s.motor_kw||0),motor_hp:Number(s.motor_hp||0),efficiency:Number(s.eff||0),npshr:Number(s.npsh||0),rpm:Number(s.rpm||2900),pole:2,stages:Number(s.stages||0),connection:String(s.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:BFI_CORE.VERSION};
   }
   if(fam==='ES'){
     const pole=Number(esPole);
@@ -648,11 +652,11 @@ export function selectPumpCandidates(family:string,q:number,h:number,esPole=0,li
   if(!(Number(q)>0&&Number(h)>0))return [];
   if(isChcFamily(fam)){
     const engine=chcEngine(fam),result=engine.core.select(engine.db,Number(q),Number(h),50),rows=Array.isArray(result?.candidates)?result.candidates:[];
-    return rows.slice(0,max).map((x:any,rank:number)=>({brand:'B.G.Reich',family:'CHC',series:engine.label,generation_code:engine.generation,keysuite_generation_code:engine.generation,model:String(x.model||''),motor_kw:Number(x.motor_kw||0),motor_hp:Number(x.motor_hp||0),efficiency:Number(x.eff||0),npshr:Number(x.npsh||0),rpm:Number(x.rpm||engine.db?.curves?.[x.series]?.speed_rpm||2900),pole:2,stages:Number(x.stages||0),connection:String(x.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:engine.core.VERSION,selector_rank:rank+1}));
+    return rows.slice(0,max).map((x:any,rank:number)=>({brand:'B.G.Reich',family:'CHC',series:engine.label,generation_code:engine.generation,keysuite_generation_code:engine.generation,model:String(x.model||''),motor_kw:Number(x.motor_kw||0),motor_hp:Number(x.motor_hp||0),motor_efficiency_class:Number(x.motor_hp||0)>0&&Number(x.motor_hp)<=0.75+1e-9?'IE1':String(engine.motorEff||'IE3'),efficiency:Number(x.eff||0),npshr:Number(x.npsh||0),rpm:Number(x.rpm||engine.db?.curves?.[x.series]?.speed_rpm||2900),pole:2,stages:Number(x.stages||0),connection:String(x.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:engine.core.VERSION,selector_rank:rank+1}));
   }
   if(isBfiFamily(fam)){
     const result=BFI_CORE.select(BFI_DB,Number(q),Number(h),50),rows=Array.isArray(result?.candidates)?result.candidates:[];
-    return rows.slice(0,max).map((x:any,rank:number)=>{const base=String(x.model||'').replace(/T$/i,''),phases=Array.isArray(x.phases)&&x.phases.length?x.phases:['3Ph'],phase=phases.includes('3Ph')?'3Ph':String(phases[0]||'1Ph'),display=phase==='3Ph'?`${base}T`:base;return {brand:'B.G.Reich',family:'BFI',series:String(x.series||'BFI'),model:base,base_model:base,display_model:display,quotation_model:display,motor_phase:phase,motor_efficiency_class:phase==='1Ph'?'IE1':'IE2',motor_kw:Number(x.motor_kw||0),motor_hp:Number(x.motor_hp||0),efficiency:Number(x.eff||0),npshr:Number(x.npsh||0),rpm:Number(x.rpm||2900),pole:2,stages:Number(x.stages||0),connection:String(x.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:BFI_CORE.VERSION,selector_rank:rank+1};});
+    return rows.slice(0,max).map((x:any,rank:number)=>{const base=String(x.model||'').replace(/T$/i,''),phases=Array.isArray(x.phases)&&x.phases.length?x.phases:['3Ph'],phase=phases.includes('3Ph')?'3Ph':String(phases[0]||'1Ph'),display=phase==='3Ph'?`${base}T`:base;return {brand:'B.G.Reich',family:'BFI',series:String(x.series||'BFI'),model:base,base_model:base,display_model:display,quotation_model:display,motor_phase:phase,motor_efficiency_class:Number(x.motor_hp||0)>0&&Number(x.motor_hp)<=0.75+1e-9?'IE1':phase==='1Ph'?'IE1':'IE2',motor_kw:Number(x.motor_kw||0),motor_hp:Number(x.motor_hp||0),efficiency:Number(x.eff||0),npshr:Number(x.npsh||0),rpm:Number(x.rpm||2900),pole:2,stages:Number(x.stages||0),connection:String(x.connection||'-'),requested_flow_m3h:Number(q),requested_head_m:Number(h),selector_core_version:BFI_CORE.VERSION,selector_rank:rank+1};});
   }
   if(fam==='ES'){
     const pole=Number(esPole),core=(globalThis as any).ESCore,db=(globalThis as any).ES_SELECTOR_DB;if(!core||!db||![2,4].includes(pole))return [];
@@ -754,7 +758,7 @@ export async function generateCurvePdf(family:string,q:number,h:number,dutyText:
     if(summary.image){try{if(optimizePdf){const jpg=String(summary.image).replace(/\.png$/i,'.jpg');try{dimImage=await embedPublicJpg(pdf,baseUrl,`assets/pdf-optimized/bfi-dimensions/${jpg}`)}catch(_){dimImage=await embedPublicPng(pdf,baseUrl,`assets/bfi-dimensions/${summary.image}`)}}else dimImage=await embedPublicPng(pdf,baseUrl,`assets/bfi-dimensions/${summary.image}`)}catch(error){console.warn('BFI dimension drawing unavailable',error)}}
   }else if(optimizePdf){try{dimImage=await embedPublicJpg(pdf,baseUrl,'assets/keybot-pdf/es-dimension.jpg')}catch(_){dimImage=await embedPublicPng(pdf,baseUrl,'assets/keybot-pdf/es-dimension.png')}}else dimImage=await embedPublicPng(pdf,baseUrl,'assets/keybot-pdf/es-dimension.png');
 
-  const bfiMotorEff=phase==='1Ph'?'IE1':'IE2',mt=motorTech(motorHp,pole,isChc?String(engine?.motorEff||'IE3'):isBfi?bfiMotorEff:'IE3',phase);
+  const smallMotorIe1=motorHp>0&&motorHp<=0.75+1e-9,bfiMotorEff=smallMotorIe1||phase==='1Ph'?'IE1':'IE2',chcMotorEff=smallMotorIe1?'IE1':String(engine?.motorEff||'IE3'),mt=motorTech(motorHp,pole,isChc?chcMotorEff:isBfi?bfiMotorEff:'IE3',phase);
   const pumpEnvelope=isChc?(Number(dim.d1||0)/2+Number(dim.d2||0)):0;
   const chcLength=isChc?Math.max(pumpEnvelope,Number(dim.pumpL||0)):0,chcWidth=isChc?Math.max(pumpEnvelope,Number(dim.pumpW||0)):0;
   const bfiDimension=isBfi?bfiDimensionSummary(model,'',dim,phase,weightKg):null;
@@ -765,7 +769,7 @@ export async function generateCurvePdf(family:string,q:number,h:number,dutyText:
 
   const displayBrand=String(displayIdentity?.brand||'B.G.Reich').trim()||'B.G.Reich',displaySeries=String(displayIdentity?.series||(isChc?String(engine?.label||'CHC'):isBfi?'BFI':'ES')).trim()||(isChc?String(engine?.label||'CHC'):isBfi?'BFI':'ES');let displayModel=String(displayIdentity?.model||model).trim()||model;if(isBfi){const enhanced=!!displayIdentity?.enhanced||!!displayIdentity?.enhanced_curve||/E$/i.test(displayModel)||/E$/i.test(String(forcedModel||'')),aliased=displayModel.replace(/[TE]$/i,'');displayModel=enhanced?aliased+'E':phase==='3Ph'?aliased+'T':aliased;}
   const enhanced=isBfi&&(!!displayIdentity?.enhanced||!!displayIdentity?.enhanced_curve||/E$/i.test(displayModel));
-  const pageArgs={family:isChc?'CHC':fam,brand:displayBrand,series:displaySeries,model:displayModel,masterModel:model,dutyText,q,motorHp,motorKw,pole,hz,rpm,enhanced,eff,npsh,brakeHp,suction,discharge,stages,impellerMm,maxPressure,dim,esPumpset:esPs,motorTech:mt,motorEfficiencyClass:isChc?String(engine?.motorEff||'IE3'):isBfi?bfiMotorEff:'IE3',pumpset,bfiDimension,weightKg,phase,material:materialFor(isChc?'CHC':fam,displayIdentity?.material),charts};
+  const pageArgs={family:isChc?'CHC':fam,brand:displayBrand,series:displaySeries,model:displayModel,masterModel:model,dutyText,q,motorHp,motorKw,pole,hz,rpm,enhanced,eff,npsh,brakeHp,suction,discharge,stages,impellerMm,maxPressure,dim,esPumpset:esPs,motorTech:mt,motorEfficiencyClass:isChc?chcMotorEff:isBfi?bfiMotorEff:'IE3',pumpset,bfiDimension,weightKg,phase,material:materialFor(isChc?'CHC':fam,displayIdentity?.material||displayModel),charts};
 
   const p1=pdf.addPage(LETTER);drawPage1(p1,logo,regular,bold,pageArgs);
   const p2=pdf.addPage(LETTER);drawPage2(p2,logo,font,bold,pageArgs);
