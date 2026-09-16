@@ -1,4 +1,4 @@
-/* KeySuite V4.27.06 — Brand-level tick controls all visible series; CHC and BFI Enhanced are available but default unticked. Dashboard Brand / Series follows User Assigned when no customer, and User Assigned × Customer Price Preference when selected.
+/* KeySuite V4.27.07 — Brand-level tick controls all visible series; CHC and BFI Enhanced are available but default unticked. Dashboard Brand / Series follows User Assigned when no customer, and User Assigned × Customer Price Preference when selected.
    Preserves the user-entered Quick Selection flow/head units into the selected-model view and PDF.
    Hydraulic selection remains in m³/hr and metres. */
 (() => {
@@ -429,7 +429,7 @@ window.addEventListener('KEYSUITE_CUSTOMER_BRAND_PREFERENCE_CHANGED',event=>{
 });
 window.addEventListener('KEYSUITE_BRANDS_ERROR',()=>{state.prefLoaded=false;renderBrandState()});
 window.addEventListener('KEYSUITE_V393_BRAND_CONTEXT_CHANGED',()=>{if(!api()?.state?.coreReady)return;if(!state.prefLoaded){loadPreference();return}const valid=new Set(entries().map(e=>e.key));state.savedKeys=new Set([...state.savedKeys].filter(k=>valid.has(k)));renderPreference();renderResults(true)});
-window.KeySuiteV39442Dashboard={version:'4.27.06',runSelected,renderResults,renderPreference,loadPreference,masterSeries,seriesFor,brandSeriesFor,cancelPending,removeMaterialControls,presentationContext};
+window.KeySuiteV39442Dashboard={version:'4.27.07',runSelected,renderResults,renderPreference,loadPreference,masterSeries,seriesFor,brandSeriesFor,cancelPending,removeMaterialControls,presentationContext};
 window.KeySuiteV3944Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV39444Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV39445Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV39446Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV39447Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV39449Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV394410Dashboard=window.KeySuiteV39442Dashboard;window.KeySuiteV40201Dashboard=window.KeySuiteV39442Dashboard;
 let attempts=0;function boot(){attempts++;if(setup())return;if(attempts<40)setTimeout(boot,200)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

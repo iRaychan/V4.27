@@ -1,16 +1,16 @@
 {
-  "version": "4.27.06",
-  "baseline": "4.27.05 FULL CLEAN",
-  "upgrade_supported_from": "4.27.05",
+  "version": "4.27.07",
+  "baseline": "4.27.06 FULL CLEAN",
+  "upgrade_supported_from": "4.27.06",
   "changes": [
-    "Manifold Strainer pricing is simplified to GI Thread, SS Thread, GI Flange and SS Flange without pressure-class choices",
-    "BFI automatically uses threaded strainers; CHC uses threaded strainers through DN65 and flanged strainers from DN80",
-    "Manifold Sizing and GI/SS Header pricing extend through DN800 without extending Branch, Flexible or Strainer tables",
-    "Header pricing uses a GI/SS material selector and shows only the selected material rows",
-    "BFI pricing uses one SS304/SS316 material selector instead of displaying the BFIN table below BFI"
+    "Imports 66 MYR Manifold Price List rows from workbook 010 - Manifold (Pricelist) - 260916 - V1.2",
+    "Imports the workbook Manifold Sizing matrix for DN25 through DN200 while retaining the DN250 through DN800 extension",
+    "BFI and BFIN automatically use Thread Flexible and Strainer accessories at every size",
+    "CHC and VMS automatically use Thread Flexible and Strainer accessories through DN50 and Flange from DN65",
+    "Automatic Flexible and Strainer material follows the selected GI or SS manifold material in KeySuite and KeyBot"
   ],
   "new_database_migration_required": true,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.05. Upload the V4.27.06 web assets, run npx.cmd supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
+  "notes": "Upgrade from V4.27.06. Upload the V4.27.07 web assets, run npx.cmd supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
 }
