@@ -1,16 +1,16 @@
 {
-  "version": "4.27.05",
-  "baseline": "4.27.04 FULL CLEAN",
-  "upgrade_supported_from": "4.27.04",
+  "version": "4.27.06",
+  "baseline": "4.27.05 FULL CLEAN",
+  "upgrade_supported_from": "4.27.05",
   "changes": [
-    "Price List adds a separate BFIN Stainless Steel 316 table with independent MYR, USD and RMB source prices",
-    "BFIN has independent 1 Phase and 3 Phase prices and rarity values and no longer reuses BFI Stainless Steel 304 prices",
-    "KeySuite and KeyBot quotations both use the new BFIN price book",
-    "BFIN PDF Page 2 reports casing, impeller and shaft as Stainless Steel 316",
-    "CHC C4, CHC C6 and BFI motors rated 0.75 HP or below automatically use efficiency class IE1 in KeySuite and KeyBot"
+    "Manifold Strainer pricing is simplified to GI Thread, SS Thread, GI Flange and SS Flange without pressure-class choices",
+    "BFI automatically uses threaded strainers; CHC uses threaded strainers through DN65 and flanged strainers from DN80",
+    "Manifold Sizing and GI/SS Header pricing extend through DN800 without extending Branch, Flexible or Strainer tables",
+    "Header pricing uses a GI/SS material selector and shows only the selected material rows",
+    "BFI pricing uses one SS304/SS316 material selector instead of displaying the BFIN table below BFI"
   ],
   "new_database_migration_required": true,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.04. Upload the V4.27.05 web assets, run supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
+  "notes": "Upgrade from V4.27.05. Upload the V4.27.06 web assets, run npx.cmd supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
 }

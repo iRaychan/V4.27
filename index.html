@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#17365d">
-  <title>KeySuite V4.27.05</title>
+  <title>KeySuite V4.27.06</title>
   <link rel="manifest" href="manifest.json">
   <style>
     :root{--navy:#17365d;--blue:#2f75b5;--light:#eef3f8;--line:#cbd5e1;--text:#172033;--muted:#64748b;--ok:#15803d}
@@ -330,7 +330,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
 
     /* V2.13 Manifold product and price tables */
     .item-description,#assemblyDescription,#assemblyDescriptionPopup{tab-size:4}
-    .manifold-product-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.manifold-accessory-options{grid-column:1/-1;display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding-top:2px}.manifold-option-check,.assembly-manifold-check{display:flex!important;align-items:center!important;gap:7px!important;min-height:42px;margin:0!important;padding:8px 10px;border:1px solid #dbe3ec;border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer}.manifold-option-check input,.assembly-manifold-check input{width:16px!important;height:16px!important;margin:0!important}.manifold-summary{display:grid;gap:8px}.manifold-summary-row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #edf1f6}.manifold-summary-row b{text-align:right}.manifold-total{font-size:22px;color:var(--navy)}.manifold-pricelist-tabs{display:flex;gap:8px;flex-wrap:wrap}.manifold-pricelist-tabs .active{background:var(--navy);color:#fff}.manifold-table input,.manifold-table select{min-width:92px}.manifold-table .na-cell{color:#94a3b8;text-align:center}.pricing-manual-calculator{border-color:#93c5fd;background:#eff6ff}@media(max-width:900px){.manifold-product-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.manifold-product-grid{grid-template-columns:1fr}}
+    .manifold-product-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px}.manifold-accessory-options{grid-column:1/-1;display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;padding-top:2px}.manifold-option-check,.assembly-manifold-check{display:flex!important;align-items:center!important;gap:7px!important;min-height:42px;margin:0!important;padding:8px 10px;border:1px solid #dbe3ec;border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer}.manifold-option-check input,.assembly-manifold-check input{width:16px!important;height:16px!important;margin:0!important}.manifold-summary{display:grid;gap:8px}.manifold-summary-row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid #edf1f6}.manifold-summary-row b{text-align:right}.manifold-total{font-size:22px;color:var(--navy)}.manifold-pricelist-tabs{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.manifold-pricelist-tabs .active{background:var(--navy);color:#fff}.manifold-header-material-filter{margin-left:auto;display:flex;align-items:center;gap:8px}.manifold-header-material-filter[hidden]{display:none!important}.manifold-header-material-filter label{font-size:12px;font-weight:800;color:var(--navy);white-space:nowrap}.manifold-header-material-filter select{min-width:100px;height:40px}.manifold-table input,.manifold-table select{min-width:92px}.manifold-table .na-cell{color:#94a3b8;text-align:center}.pricing-manual-calculator{border-color:#93c5fd;background:#eff6ff}@media(max-width:900px){.manifold-product-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.manifold-product-grid{grid-template-columns:1fr}.manifold-header-material-filter{width:100%;margin-left:0;justify-content:flex-start}}
 
     /* V2.15 ES configuration and System workspace clarity */
     .es-product-seal,.es-product-elastomer{min-width:210px}.es-product-seal:disabled{background:#e5e7eb!important;color:#64748b!important;cursor:not-allowed}
@@ -440,7 +440,12 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
     #bfiPriceList .bfi-pricelist-settings>div>label{height:18px!important;line-height:18px!important;margin:0!important;align-self:start}
     #bfiPriceList .bfi-pricelist-settings>div>select,#bfiPriceList .bfi-pricelist-settings>div>input{height:42px!important;width:100%!important;box-sizing:border-box!important;align-self:start;margin:0!important}
     #bfiPriceList .bfi-pricelist-settings .actions{margin-top:6px!important;min-height:34px}
+    #bfiPriceList .bfi-price-list-tools{display:flex;align-items:end;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+    #bfiPriceList .bfi-material-setting{min-width:150px}
+    #bfiPriceList .bfi-material-setting label{display:block;font-size:12px;font-weight:800;color:var(--navy);margin-bottom:4px}
+    #bfiPriceList .bfi-material-setting select{width:100%;height:42px}
     @media(max-width:850px){#bfiPriceList .bfi-pricelist-settings{grid-template-columns:1fr!important}}
+    @media(max-width:620px){#bfiPriceList .bfi-price-list-tools{width:100%;justify-content:flex-start}#bfiPriceList .bfi-material-setting,#bfiPriceList .price-list-search{width:100%;max-width:none}}
 
     /* V4.05.12 — strict Currency/Multiplier baseline alignment. */
     .pricelist-settings{align-items:start!important}
@@ -637,7 +642,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
 <div id="loadingView" class="loading-screen hidden"><div class="loading-card"><div class="spinner"></div><div id="loadingText">Checking secure access…</div></div></div>
 <div id="appView" class="app hidden">
   <aside>
-    <div class="brand-row"><div class="brand">KeySuite<small>Full Suite V4.27.05</small></div><button id="keyButton" type="button" class="key-button" title="Open Key Dashboard" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l8-8m-2 2l2 2m-5 1l2 2"></path></svg><span>Key</span></button></div>
+    <div class="brand-row"><div class="brand">KeySuite<small>Full Suite V4.27.06</small></div><button id="keyButton" type="button" class="key-button" title="Open Key Dashboard" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l8-8m-2 2l2 2m-5 1l2 2"></path></svg><span>Key</span></button></div>
     <nav>
       <button data-page="dashboard" class="active">Dashboard</button>
       <button data-page="customers">Customers</button>
@@ -662,7 +667,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
       <button id="settingsButton" type="button" class="settings-button">⚙ Settings</button>
       <button id="logoutButton" type="button">Sign out</button>
     </div>
-    <div class="suite-version">KeySuite V4.27.05</div>
+    <div class="suite-version">KeySuite V4.27.06</div>
   </aside>
 
   <main>
@@ -832,20 +837,20 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
         <div><label>Supply</label><label id="bareShaftControl" class="default-choice-control"><input id="bareShaft" type="checkbox" data-default-checked="false"> Bare Shaft Pump</label></div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <iframe id="selectorFrame" src="selector/index.html?v=42705" data-src="selector/index.html?v=42705" data-g2-src="selector/index.html?v=42705" data-g1-src="selector-g1/index.html?v=42705" title="KeySelector CHC C6 Series" style="width:100%;height:1900px;border:0;display:block"></iframe>
+        <iframe id="selectorFrame" src="selector/index.html?v=42706" data-src="selector/index.html?v=42706" data-g2-src="selector/index.html?v=42706" data-g1-src="selector-g1/index.html?v=42706" title="KeySelector CHC C6 Series" style="width:100%;height:1900px;border:0;display:block"></iframe>
       </div>
     </section>
 
     <section id="selectorEs" class="page">
       <div class="page-title-row"><div><h1>Selector · ES</h1><div class="muted">KeyES V1.7 End Suction selector. Selection remains engineering-driven by KeyES; KeySuite applies customer/category pricing when routed to Assembly or Quote.</div></div><button id="quickSelectionReturnEs" class="btn secondary quick-selection-return" type="button" hidden title="Return to Quick Selection" aria-label="Return to Quick Selection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7l-5 5 5 5"></path><path d="M4 12h10a6 6 0 0 1 6 6"></path></svg></button></div>
       <div class="card" style="padding:0;overflow:hidden">
-        <iframe id="selectorEsFrame" src="selector-es/index.html?v=42705" data-src="selector-es/index.html?v=42705" title="KeyES End Suction Selector V1.7" style="width:100%;height:2600px;border:0;display:block"></iframe>
+        <iframe id="selectorEsFrame" src="selector-es/index.html?v=42706" data-src="selector-es/index.html?v=42706" title="KeyES End Suction Selector V1.7" style="width:100%;height:2600px;border:0;display:block"></iframe>
       </div>
     </section>
 
     <section id="selectorBfi" class="page">
       <div class="page-title-row"><div><h1>Selector · BFI</h1><div class="muted">BFI horizontal multistage selector. Curve, duty-point selection, technical data, Quote and Assembly follow the same KeySuite workflow as CHC.</div></div><button id="quickSelectionReturnBfi" class="btn secondary quick-selection-return" type="button" hidden title="Return to Quick Selection" aria-label="Return to Quick Selection"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7l-5 5 5 5"></path><path d="M4 12h10a6 6 0 0 1 6 6"></path></svg></button></div>
-      <div class="card" style="padding:0;overflow:hidden"><iframe id="selectorBfiFrame" src="selector-bfi/index.html?v=42705" data-src="selector-bfi/index.html?v=42705" title="KeySelector BFI" style="width:100%;height:1900px;border:0;display:block"></iframe></div>
+      <div class="card" style="padding:0;overflow:hidden"><iframe id="selectorBfiFrame" src="selector-bfi/index.html?v=42706" data-src="selector-bfi/index.html?v=42706" title="KeySelector BFI" style="width:100%;height:1900px;border:0;display:block"></iframe></div>
     </section>
 
     <section id="productChc" class="page">
@@ -862,7 +867,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
         <div class="card"><h2>CHC Series</h2><div id="productSeriesList" class="product-series-list"></div></div>
         <div class="card"><div class="page-title-row" style="margin-bottom:12px"><div><h2 id="productSeriesTitle" style="margin:0">Models</h2><div id="productModelCount" class="muted"></div></div></div><div id="productModelGrid" class="product-model-grid"></div></div>
       </div>
-      <iframe id="productSelectorFrame" src="about:blank" data-src="selector/product.html?product=1&v=42705" data-g2-src="selector/product.html?product=1&v=42705" data-g1-src="selector-g1/product.html?product=1&v=42705" title="CHC Product Curve" style="display:none"></iframe>
+      <iframe id="productSelectorFrame" src="about:blank" data-src="selector/product.html?product=1&v=42706" data-g2-src="selector/product.html?product=1&v=42706" data-g1-src="selector-g1/product.html?product=1&v=42706" title="CHC Product Curve" style="display:none"></iframe>
     </section>
 
     <section id="productBfi" class="page">
@@ -875,7 +880,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
         <div><label>Elastomer</label><select id="bfiProductElastomer"><option selected>Viton</option><option>EPDM</option><option>NBR</option></select></div>
       </div>
       <div class="product-layout"><div class="card"><h2>BFI Series</h2><div id="bfiProductSeriesList" class="product-series-list"></div></div><div class="card"><div class="page-title-row" style="margin-bottom:12px"><div><h2 style="margin:0">BFI Models</h2><div id="bfiProductModelCount" class="muted"></div></div></div><div id="bfiProductModelGrid" class="product-model-grid"></div></div></div>
-      <iframe id="productBfiSelectorFrame" src="about:blank" data-src="selector-bfi/product.html?product=1&amp;v=42705" title="BFI Product Curve" style="display:none"></iframe>
+      <iframe id="productBfiSelectorFrame" src="about:blank" data-src="selector-bfi/product.html?product=1&amp;v=42706" title="BFI Product Curve" style="display:none"></iframe>
     </section>
 
     <section id="productGws" class="page">
@@ -969,7 +974,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
       </div>
       <div class="card" style="margin-top:16px"><div class="page-title-row"><div><h2 style="margin:0">ES Models</h2><div id="esProductCount" class="muted"></div></div><div class="price-list-search"><label>Search Model</label><input id="esProductSearch" placeholder="Example: ES 65-32"></div></div>
       <div class="table-wrap" style="max-height:650px"><table><thead><tr><th>Model</th><th style="text-align:right">Actions</th></tr></thead><tbody id="esProductRows"></tbody></table></div></div>
-      <iframe id="productEsSelectorFrame" src="about:blank" data-src="selector-es/index.html?product=1&v=42705" title="ES Product Curve" style="display:none"></iframe>
+      <iframe id="productEsSelectorFrame" src="about:blank" data-src="selector-es/index.html?product=1&v=42706" title="ES Product Curve" style="display:none"></iframe>
     </section>
     <section id="productKeyplc" class="page">
       <div class="page-title-row"><div><h1>Product · KeyPLC Panel</h1><div class="muted">Choose a motor rating and number of pumps, then route the priced control panel to Assembly or Quotation.</div></div></div>
@@ -1547,7 +1552,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
 
     <section id="bfiPriceList" class="page">
       <div class="key-back-row"><button class="btn secondary" type="button" data-go="priceListDashboard">← Price List</button></div>
-      <div class="page-title-row"><div><h1>BFI / BFIN Price List</h1><div class="muted">Maintain separate MYR, USD and RMB source prices for BFI Stainless Steel 304 and BFIN Stainless Steel 316 models.</div></div></div>
+      <div class="page-title-row"><div><h1>BFI Price List</h1><div class="muted">Select SS304 or SS316 to maintain each material's independent MYR, USD and RMB source prices.</div></div></div>
       <div id="bfiPriceListMessage" class="auth-message"></div>
       <details class="card pricelist-currency-panel">
         <summary>Currency &amp; Multipliers</summary>
@@ -1560,10 +1565,8 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
           <div class="pricelist-note" style="margin-top:12px">BFI and BFIN use the BFI Category Pricing Rule and currency selection. Currency Selection above applies to both tables. Press and hold directly on a locked USD or RMB multiplier for 3 seconds, then edit and press Save. Zero values are unpriced and are not quotable.</div>
         </div>
       </details>
-      <div class="card" style="margin-top:16px"><div class="page-title-row" style="margin-bottom:12px"><div><h2 style="margin:0">BFI Models</h2><div id="bfiPriceListCount" class="muted"></div></div><div class="price-list-search"><label>Search Model</label><input id="bfiPriceSearch" placeholder="Example: BFI 12-5"></div></div>
+      <div class="card" style="margin-top:16px"><div class="page-title-row" style="margin-bottom:12px"><div><h2 id="bfiPriceListHeading" style="margin:0">BFI Models · Stainless Steel 304</h2><div id="bfiPriceListCount" class="muted"></div></div><div class="bfi-price-list-tools"><div class="bfi-material-setting"><label for="bfiPriceMaterial">Material</label><select id="bfiPriceMaterial"><option value="SS304">SS304</option><option value="SS316">SS316</option></select></div><div class="price-list-search"><label>Search Model</label><input id="bfiPriceSearch" placeholder="Example: BFI 12-5"></div></div></div>
       <div class="table-wrap" style="max-height:680px"><table class="pricelist-table"><thead><tr><th>Model</th><th>1 Phase · Price / Rarity</th><th>3 Phase · Price / Rarity</th><th></th></tr></thead><tbody id="bfiPriceRows"></tbody></table></div></div>
-      <div class="card" style="margin-top:16px"><div class="page-title-row" style="margin-bottom:12px"><div><h2 style="margin:0">BFIN Models · Stainless Steel 316</h2><div id="bfinPriceListCount" class="muted"></div></div><div class="price-list-search"><label>Search Model</label><input id="bfinPriceSearch" placeholder="Example: BFIN 12-5"></div></div>
-      <div class="table-wrap" style="max-height:680px"><table class="pricelist-table"><thead><tr><th>Model</th><th>1 Phase · Price / Rarity</th><th>3 Phase · Price / Rarity</th><th></th></tr></thead><tbody id="bfinPriceRows"></tbody></table></div></div>
     </section>
 
 
@@ -1644,7 +1647,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
         </div>
       </details>
       <div class="card" style="margin-top:16px"><div class="page-title-row"><div><h2 style="margin:0">Manifold Tables</h2><div id="manifoldPriceListCount" class="muted"></div></div></div>
-        <div class="manifold-pricelist-tabs" role="tablist"><button class="btn secondary active" type="button" data-manifold-table="branch">Branch</button><button class="btn secondary" type="button" data-manifold-table="flexible">Flexible</button><button class="btn secondary" type="button" data-manifold-table="strainer">Strainer</button><button class="btn secondary" type="button" data-manifold-table="sizing">Manifold Sizing</button><button class="btn secondary" type="button" data-manifold-table="header">Header</button><button class="btn secondary" type="button" data-manifold-table="tank_fitting">Tank Fitting</button></div>
+        <div class="manifold-pricelist-tabs" role="tablist"><button class="btn secondary active" type="button" data-manifold-table="branch">Branch</button><button class="btn secondary" type="button" data-manifold-table="flexible">Flexible</button><button class="btn secondary" type="button" data-manifold-table="strainer">Strainer</button><button class="btn secondary" type="button" data-manifold-table="sizing">Manifold Sizing</button><button class="btn secondary" type="button" data-manifold-table="header">Header</button><button class="btn secondary" type="button" data-manifold-table="tank_fitting">Tank Fitting</button><div id="manifoldHeaderMaterialFilter" class="manifold-header-material-filter" hidden><label for="manifoldHeaderMaterial">Material</label><select id="manifoldHeaderMaterial"><option value="GI">GI</option><option value="SS">SS</option></select></div></div>
         <div id="manifoldPriceTableHost" class="table-wrap" style="max-height:650px;margin-top:12px"></div>
       </div>
     </section>
@@ -1988,23 +1991,23 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
 </div>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="permissions.js?v=42705"></script>
-<script src="v40407-role-authority.js?v=42705"></script>
+<script src="permissions.js?v=42706"></script>
+<script src="v40407-role-authority.js?v=42706"></script>
 <script src="applications.js?v=409"></script>
-<script src="assembly.js?v=42705"></script>
-<script src="bfi-data-v42302.js?v=42705"></script>
-<script src="pdf-optimization.js?v=42705"></script>
-<script src="app.js?v=42705"></script>
-<script src="pricing.js?v=42705"></script>
+<script src="assembly.js?v=42706"></script>
+<script src="bfi-data-v42302.js?v=42706"></script>
+<script src="pdf-optimization.js?v=42706"></script>
+<script src="app.js?v=42706"></script>
+<script src="pricing.js?v=42706"></script>
 <script src="quotation-references.js?v=409"></script>
 <script src="categories.js?v=41700"></script>
-<script src="chc-g1-price-map-v41409.js?v=42705"></script>
-<script src="pricelist.js?v=42705"></script>
+<script src="chc-g1-price-map-v41409.js?v=42706"></script>
+<script src="pricelist.js?v=42706"></script>
 <script src="chc-g1-product-data-v41411.js?v=42115"></script>
-<script src="product.js?v=42705"></script>
-<script src="bfi-v42302.js?v=42705"></script>
-<script src="manifold.js?v=42705"></script>
-<script src="roles.js?v=42705"></script>
+<script src="product.js?v=42706"></script>
+<script src="bfi-v42302.js?v=42706"></script>
+<script src="manifold.js?v=42706"></script>
+<script src="roles.js?v=42706"></script>
 <script src="motor.js?v=409"></script>
 <script src="coupling.js?v=409"></script>
 <script src="baseplate.js?v=409"></script>
@@ -2062,12 +2065,12 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
     <div id="productCurveHost"></div>
   </div>
 </dialog>
-<script src="v394411-product-curve.js?v=42705" data-keysuite-loaded="1"></script>
+<script src="v394411-product-curve.js?v=42706" data-keysuite-loaded="1"></script>
 <script src="company-settings.js?v=41707"></script>
 <script src="keyai.js?v=41300"></script>
 <script src="keylab.js?v=41406"></script>
-<script src="auth.js?v=42705"></script>
-<script src="v388-dashboard-keycore.js?v=42705"></script>
+<script src="auth.js?v=42706"></script>
+<script src="v388-dashboard-keycore.js?v=42706"></script>
 <script src="universe.js?v=41202"></script>
 <script src="v41223-selection-recovery.js?v=41300"></script>
 <script id="v42105-selection-generation">
@@ -2082,7 +2085,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
     try{sessionStorage.setItem(STORAGE_KEY,generation)}catch(_){}
     const frame=document.getElementById('selectorFrame');
     if(frame){
-      const wanted=generation==='G1'?(frame.dataset.g1Src||'selector-g1/index.html?v=42705'):(frame.dataset.g2Src||frame.dataset.src||'selector/index.html?v=42705');
+      const wanted=generation==='G1'?(frame.dataset.g1Src||'selector-g1/index.html?v=42706'):(frame.dataset.g2Src||frame.dataset.src||'selector/index.html?v=42706');
       const current=String(frame.getAttribute('src')||'');
       const expectedPath=generation==='G1'?'selector-g1/index.html':'selector/index.html';
       if(!current.includes(expectedPath))frame.setAttribute('src',wanted);
@@ -2103,7 +2106,7 @@ aside::-webkit-scrollbar{width:0;height:0;display:none}
   else setGeneration(generation);
 })();
 </script>
-<script src="v41200-bootstrap.js?v=42705"></script>
+<script src="v41200-bootstrap.js?v=42706"></script>
 
 <script id="v41412-static-product-generation">
 document.addEventListener('click',event=>{
