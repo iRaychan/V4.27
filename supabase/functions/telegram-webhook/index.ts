@@ -784,8 +784,14 @@ function guidedProductGroupMeta(groupValue:any){
 }
 function guidedSelectorFamily(groupValue:any){const group=String(groupValue||'').trim().toUpperCase();return group==='CHC_G1'?'CHC_G1':group==='CHC_G2'?'CHC_G2':group==='BFI'?'BFI':group==='ES'?'ES':group==='CHC'?'CHC_G2':group}
 function keybotCustomerAssignedProducts(products:any[],assignedKeys:any[]){
-  const keys=new Set((Array.isArray(assignedKeys)?assignedKeys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean));
-  return (products||[]).filter((x:any)=>keys.has(`${String(x?.brand_id||'').trim()}|${String(x?.price_group||'').trim().toUpperCase()}`));
+  const keys=new Set((Array.isArray(assignedKeys)?assignedKeys:[]).map((x:any)=>String(x||'').trim().toUpperCase()).filter(Boolean));
+  return (products||[]).filter((x:any)=>{
+    const brandId=String(x?.brand_id||'').trim().toUpperCase(),group=String(x?.price_group||'').trim().toUpperCase();
+    if(!brandId||!group)return false;
+    // Customer Curve Preference historically stores CHC C6 as `brand|CHC`,
+    // while the selector's internal hydraulic group is CHC_G2.
+    return keys.has(`${brandId}|*`)||keys.has(`${brandId}|${group}`)||(group==='CHC_G2'&&keys.has(`${brandId}|CHC`));
+  });
 }
 async function guidedUserAvailableProducts(service:any,companyId:string,user:any){
   const email=String(user?.email||'').trim().toLowerCase(),role=String(user?.role||'').trim().toLowerCase(),companyCurveOnly=user?.company_curve_only===true;if((!email&&!companyCurveOnly)||!companyId)return [];
@@ -870,7 +876,17 @@ async function guidedUserAvailableProducts(service:any,companyId:string,user:any
     if(preferenceResult.error)throw new Error(`Linked Company Brand / Series assignment could not be loaded: ${preferenceResult.error.message||preferenceResult.error}`);
     // Curve-only access follows Customer Brand / Series assignment (`keys`).
     // Price preference (`price_keys`) must never hide an assigned pump curve.
-    available=keybotCustomerAssignedProducts(available,preferenceResult.data?.selection?.keys);
+    const curveKeys=(Array.isArray(preferenceResult.data?.selection?.keys)?preferenceResult.data.selection.keys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean);
+    // Native B.G.Reich CHC / BFI / ES products do not require OEM mapping rows.
+    // Build candidates directly from the linked company's saved Curve assignment,
+    // otherwise a valid assignment can disappear before hydraulic sizing begins.
+    for(const rawKey of curveKeys){
+      const split=rawKey.lastIndexOf('|');if(split<=0)continue;
+      const brandId=rawKey.slice(0,split).trim(),savedGroup=rawKey.slice(split+1).trim().toUpperCase();
+      if(savedGroup==='*'){for(const group of ['CHC_G1','CHC_G2','BFI','ES'])add(brandId,group);continue}
+      add(brandId,savedGroup==='CHC'?'CHC_G2':savedGroup);
+    }
+    available=keybotCustomerAssignedProducts([...candidates.values()].filter((x:any)=>x.has_curve===true),curveKeys);
     const chcCountByBrand=new Map<string,number>();
     for(const product of available){const group=String(product?.price_group||'').toUpperCase();if(group==='CHC_G1'||group==='CHC_G2'){const brandId=String(product?.brand_id||'');chcCountByBrand.set(brandId,(chcCountByBrand.get(brandId)||0)+1)}}
     available=available.map((product:any)=>({...product,keybot_curve_only:true,keybot_curve_only_chc_count:chcCountByBrand.get(String(product?.brand_id||''))||0}));
@@ -2315,10 +2331,10 @@ Deno.serve(async(req)=>{
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       if(isCompanyCurveOnlyUser(navigationUser)){
         await telegramSend(telegramToken,chatId,`Hi 👋\n\n${companyCurveOnlyPrompt()}`,companyCurveOnlyMenu());
-        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.10'});
+        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.11'});
       }
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.10'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.11'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2453,7 +2469,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.10'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.11'});
     }
 
     if(newRequestButton){

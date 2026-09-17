@@ -1,16 +1,15 @@
 {
-  "version": "4.27.10",
-  "baseline": "4.27.09 FULL CLEAN",
-  "upgrade_supported_from": "4.27.09",
+  "version": "4.27.11",
+  "baseline": "4.27.10 FULL CLEAN",
+  "upgrade_supported_from": "4.27.10",
   "changes": [
-    "Curve-only product visibility follows Customer/Company Brand and Series assignment keys instead of Price Preference keys",
-    "Assigned products without a filled price remain available through Cold Item",
-    "Follow-up duty input retains its saved Brand/Series scope so BFI 20 m3/hr at 30 m can select BFI 20-3",
-    "Curve-only prompts and results do not expose Customer, Product or normal Selection controls",
-    "A single assigned CHC C4 or C6 generation is displayed as CHC while dual assignment displays separate CHC C4 and CHC C6 checkboxes"
+    "Curve-only company assignments directly create the allowed CHC, BFI and ES product families",
+    "Native B.G.Reich curve families no longer depend on OEM Brand/Series mapping rows",
+    "Legacy CHC C6 brand|CHC assignment keys are compatible with the internal CHC_G2 selector group",
+    "Curve-only visibility continues to ignore Price Preference and remains restricted to company-assigned Brand/Series"
   ],
   "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.09. Upload the V4.27.10 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
+  "notes": "Upgrade from V4.27.10. Upload the V4.27.11 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
 }
