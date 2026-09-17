@@ -1236,18 +1236,28 @@ async function keybotFastStockPriorityCandidates(service:any,candidates:any[]){
   const pools=await keybotFastStockCandidatePools(service,candidates);
   return (pools.hot.length?pools.hot:pools.cold).slice(0,6);
 }
-function keybotFastLimitedCandidates(candidates:any[],limit=6,ensureEsPoles=false){
-  const sorted=[...(candidates||[])].sort(guidedSelectionCandidateCompare),max=Math.max(1,Number(limit)||6),chosen=sorted.slice(0,max);
-  if(ensureEsPoles){
-    for(const pole of [2,4]){const candidate=sorted.find((x:any)=>Number(x?.pole||0)===pole);if(candidate&&!chosen.some((x:any)=>Number(x?.pole||0)===pole))chosen.push(candidate)}
-    while(chosen.length>max){let remove=-1;for(let i=chosen.length-1;i>=0;i--){const pole=Number(chosen[i]?.pole||0),same=chosen.filter((x:any)=>Number(x?.pole||0)===pole).length;if(![2,4].includes(pole)||same>1){remove=i;break}}chosen.splice(remove>=0?remove:chosen.length-1,1)}
-  }
+function keybotFastCandidateFamilyBucket(candidate:any){
+  const group=String(candidate?.product?.price_group||candidate?.keysuite_price_group||candidate?.family||'').toUpperCase();
+  if(group==='CHC'||group==='CHC_G1'||group==='CHC_G2')return 'CHC';
+  if(group==='BFI')return 'BFI';
+  if(group==='ES'&&Number(candidate?.pole||0)===2)return 'ES2';
+  if(group==='ES'&&Number(candidate?.pole||0)===4)return 'ES4';
+  return '';
+}
+function keybotFastLimitedCandidates(candidates:any[],limit=6,ensureEsPoles=false,ensureFamilyMix=false){
+  const sorted=[...(candidates||[])].sort(guidedSelectionCandidateCompare),max=Math.max(1,Number(limit)||6),chosen:any[]=[];
+  // A duty-only request should not let several low-kW models from one family
+  // crowd every other assigned family out of the first result. Seed one best
+  // hot model per requested family, then fill the remaining slots by rank.
+  const required=ensureFamilyMix?['CHC','BFI','ES2','ES4']:ensureEsPoles?['ES2','ES4']:[];
+  for(const bucket of required){const candidate=sorted.find((x:any)=>keybotFastCandidateFamilyBucket(x)===bucket);if(candidate&&!chosen.includes(candidate)&&chosen.length<max)chosen.push(candidate)}
+  for(const candidate of sorted){if(chosen.length>=max)break;if(!chosen.includes(candidate))chosen.push(candidate)}
   return chosen.sort(guidedSelectionCandidateCompare);
 }
 async function keybotFastStockCandidatePools(service:any,candidates:any[],options:any={}){
   const cache=new Map<string,any[]>(),evaluated:any[]=[];
   for(const candidate of candidates||[]){const product=candidate?.product,group=String(product?.price_group||'').toUpperCase();if(!['CHC_G1','CHC_G2','BFI','ES'].includes(group))continue;let rows=cache.get(group);if(!rows){try{rows=await guidedCatalogRows(service,product)}catch(_){rows=[]}cache.set(group,rows||[])}const keys=guidedUnique([candidate?.pricing_model,candidate?.model,candidate?.display_model].map((x:any)=>keybotFastPriceModelKey(group,x)).filter(Boolean)),row=(rows||[]).find((r:any)=>keys.includes(keybotFastPriceModelKey(group,r?.model))),candidateMaterial=candidate?.options?.material||candidate?.keysuite_material||candidate?.material_variant||candidate?.display_model,hasPrice=!!row&&keybotFastPriceRowMeta(group,row,candidateMaterial).hasPrice;evaluated.push({...candidate,keybot_price_available:hasPrice,keybot_stock_status:hasPrice?'hot':'cold'});}
-  const ensureEsPoles=options?.ensure_es_poles===true,hot=keybotFastLimitedCandidates(evaluated.filter((x:any)=>x.keybot_price_available===true),6,ensureEsPoles),cold=keybotFastLimitedCandidates(evaluated.filter((x:any)=>x.keybot_price_available!==true),6,ensureEsPoles);
+  const ensureEsPoles=options?.ensure_es_poles===true,ensureFamilyMix=options?.ensure_family_mix===true,hot=keybotFastLimitedCandidates(evaluated.filter((x:any)=>x.keybot_price_available===true),6,ensureEsPoles,ensureFamilyMix),cold=keybotFastLimitedCandidates(evaluated.filter((x:any)=>x.keybot_price_available!==true),6,ensureEsPoles,ensureFamilyMix);
   return {hot,cold};
 }
 async function keybotPreferredBfiDutyCandidates(service:any,q:number,h:number){
@@ -1387,7 +1397,7 @@ async function keybotFastHandleProduct(service:any,telegramToken:string,companyI
   if(Number(parsed.flow_m3h)>0&&Number(parsed.head_m)>0&&(requestScope.recognized||allAssignedDuty)){
     const family=quoteFamilyFromText(raw),chcScope=quoteChcScopeFromText(raw),requestedEsPole=Number(parsed.es_pole||quoteEsPoleFromText(raw)||0),wanted=(products||[]).filter((p:any)=>p.has_curve===true).filter((p:any)=>allAssignedDuty||keybotFastProductInScope(p,requestScope)).filter((p:any)=>{const g=String(p.price_group||'').toUpperCase();if(allAssignedDuty||requestScope.series||(!family&&requestScope.brandKey))return true;if(family.startsWith('ES'))return g==='ES';if(family==='BFI')return g==='BFI';if(!['CHC_G1','CHC_G2'].includes(g))return false;return chcScope?g===chcScope:true;});
     const q=Number(parsed.flow_m3h),h=Number(parsed.head_m),hydraulic=await guidedSizeSelectedProducts(service,companyId,wanted,q,h,240,240,requestedEsPole);if(!hydraulic.length){const curveOnly=isCompanyCurveOnlyUser(user);await telegramSend(telegramToken,chatId,curveOnly?'No suitable model was found for the assigned Brand / Series at this duty point.':'No suitable model was found for that Customer / Brand / Series / Duty.',curveOnly?companyCurveOnlyMenu():mainMenuMarkup());return session}
-    const genericEs=family==='ES'&&!requestedEsPole,pools=await keybotFastStockCandidatePools(service,hydraulic,{ensure_es_poles:genericEs}),candidates=pools.hot,token=guidedSelectionNewToken(),duty=dutyDisplay(String(productText||''),q,h).duty_text,hasCold=pools.cold.length>0,saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_selection_results',flow_m3h:q,head_m:h,selected_customer_id:String(customer?.id||'')||null,context:{...sessionContext(session),keysuite_user_email:user.email,company_curve_only:user?.company_curve_only===true,...(customer?{customer_name:customer.company_name}:{}),guided_selection_products:wanted,guided_selection_keys:wanted.map((p:any)=>String(p.key)),guided_selection_candidates:candidates,guided_selection_hot_candidates:pools.hot,guided_selection_cold_candidates:pools.cold,guided_selection_stock_view:'hot',guided_selection_token:token,guided_duty_text:duty,guided_pending_request:{...parsed,chc_scope:chcScope||'',es_pole:requestedEsPole||0,flow_m3h:q,head_m:h}}});await telegramSend(telegramToken,chatId,`${customer?`Customer: ${customer.company_name}\n\n`:''}${guidedSelectionResultText(q,h,candidates,duty,'hot',hasCold)}`,guidedSelectionResultKeyboard(candidates,token,{stockView:'hot',hasCold,hasHot:pools.hot.length>0,curveOnly:user?.company_curve_only===true}));return saved||session
+    const genericEs=family==='ES'&&!requestedEsPole,pools=await keybotFastStockCandidatePools(service,hydraulic,{ensure_es_poles:genericEs,ensure_family_mix:allAssignedDuty}),candidates=pools.hot,token=guidedSelectionNewToken(),duty=dutyDisplay(String(productText||''),q,h).duty_text,hasCold=pools.cold.length>0,saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_selection_results',flow_m3h:q,head_m:h,selected_customer_id:String(customer?.id||'')||null,context:{...sessionContext(session),keysuite_user_email:user.email,company_curve_only:user?.company_curve_only===true,...(customer?{customer_name:customer.company_name}:{}),guided_selection_products:wanted,guided_selection_keys:wanted.map((p:any)=>String(p.key)),guided_selection_candidates:candidates,guided_selection_hot_candidates:pools.hot,guided_selection_cold_candidates:pools.cold,guided_selection_stock_view:'hot',guided_selection_token:token,guided_duty_text:duty,guided_pending_request:{...parsed,chc_scope:chcScope||'',es_pole:requestedEsPole||0,flow_m3h:q,head_m:h}}});await telegramSend(telegramToken,chatId,`${customer?`Customer: ${customer.company_name}\n\n`:''}${guidedSelectionResultText(q,h,candidates,duty,'hot',hasCold)}`,guidedSelectionResultKeyboard(candidates,token,{stockView:'hot',hasCold,hasHot:pools.hot.length>0,curveOnly:user?.company_curve_only===true}));return saved||session
   }
   if(keybotFastLooksLikePump(raw)){
     const matches=keybotFastPrepareMatches(await keybotFastModelMatches(service,companyId,products,raw),raw);if(matches.length===1)return await keybotFastOpenPreparedMatch(service,telegramToken,companyId,chatId,senderId,session,customer,matches[0],{keysuite_user_email:user.email,company_curve_only:user?.company_curve_only===true,...(customer?{customer_name:customer.company_name}:{})});if(matches.length>1){const saved=await saveKeybotSession(service,companyId,chatId,senderId,{mode:'guided',step:'guided_fast_model_choice',selected_customer_id:String(customer?.id||'')||null,context:{...sessionContext(session),keysuite_user_email:user.email,company_curve_only:user?.company_curve_only===true,...(customer?{customer_name:customer.company_name}:{}),guided_fast_matches:matches}});await telegramSend(telegramToken,chatId,'More than one matching model was found. Choose the desired Brand / Model:',keybotFastMatchKeyboard(matches));return saved||session}
@@ -2345,10 +2355,10 @@ Deno.serve(async(req)=>{
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       if(isCompanyCurveOnlyUser(navigationUser)){
         await telegramSend(telegramToken,chatId,`Hi 👋\n\n${companyCurveOnlyPrompt()}`,companyCurveOnlyMenu());
-        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.12'});
+        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.13'});
       }
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.12'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.13'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2483,7 +2493,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.12'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.13'});
     }
 
     if(newRequestButton){

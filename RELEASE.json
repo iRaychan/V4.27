@@ -1,15 +1,16 @@
 {
-  "version": "4.27.12",
-  "baseline": "4.27.11 FULL CLEAN",
-  "upgrade_supported_from": "4.27.11",
+  "version": "4.27.13",
+  "baseline": "4.27.12 FULL CLEAN",
+  "upgrade_supported_from": "4.27.12",
   "changes": [
-    "Curve-only access prefers the dedicated Customer Curve assignment when it resolves to active Brand/Series",
-    "Older company Brand/Series assignment rows are used when dedicated Curve keys are empty or stale",
-    "Legacy fallback restores assigned CHC C4/C6, BFI and ES without enabling price checking",
-    "Unknown or deleted Brand keys are ignored and cannot create selectable pump families"
+    "Duty-only KeyBot searches try to include one suitable CHC, BFI, ES 2P and ES 4P model",
+    "Only assigned Brand/Series with a suitable priced Hot Item are included in the first recommendations",
+    "Families with no suitable Hot Item are skipped instead of displacing available common models",
+    "Cold Item models remain available through the Cold Item button",
+    "Explicit Brand, Series, pump-type and pole searches keep their existing focused ranking"
   ],
   "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.11. Upload the V4.27.12 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
+  "notes": "Upgrade from V4.27.12. Upload the V4.27.13 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
 }
