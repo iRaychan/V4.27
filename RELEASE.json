@@ -1,16 +1,18 @@
 {
-  "version": "4.27.07",
-  "baseline": "4.27.06 FULL CLEAN",
-  "upgrade_supported_from": "4.27.06",
+  "version": "4.27.08",
+  "baseline": "4.27.07 FULL CLEAN",
+  "upgrade_supported_from": "4.27.07",
   "changes": [
-    "Imports 66 MYR Manifold Price List rows from workbook 010 - Manifold (Pricelist) - 260916 - V1.2",
-    "Imports the workbook Manifold Sizing matrix for DN25 through DN200 while retaining the DN250 through DN800 extension",
-    "BFI and BFIN automatically use Thread Flexible and Strainer accessories at every size",
-    "CHC and VMS automatically use Thread Flexible and Strainer accessories through DN50 and Flange from DN65",
-    "Automatic Flexible and Strainer material follows the selected GI or SS manifold material in KeySuite and KeyBot"
+    "Company-only Telegram senders assigned Check Curve can use KeyBot without a linked KeySuite email or Role",
+    "Company-only Check Curve users go directly to Brand, Series, Model or Duty input without Customer, Product or Selection menus",
+    "Company-only model access follows only the company active Brand and Series configuration",
+    "Check Price, Assemble and Add to System are hidden and blocked for company-only Check Curve users while Pump Configuration remains available",
+    "Generic ES sizing preserves at least one suitable 2-pole and one suitable 4-pole result when both speeds are available",
+    "ES 2P, ES 2Pole, ES 2900 and ES 2900rpm restrict sizing to 2900 rpm",
+    "ES 4P, ES 4Pole, ES 1450 and ES 1450rpm restrict sizing to 1450 rpm"
   ],
-  "new_database_migration_required": true,
+  "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.06. Upload the V4.27.07 web assets, run npx.cmd supabase db push, and redeploy the Supabase telegram-webhook Edge Function to project skidqdixnnnuhvarekxp."
+  "notes": "Upgrade from V4.27.07. Upload the V4.27.08 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
 }
