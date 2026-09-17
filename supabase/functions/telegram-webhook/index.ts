@@ -793,6 +793,16 @@ function keybotCustomerAssignedProducts(products:any[],assignedKeys:any[]){
     return keys.has(`${brandId}|*`)||keys.has(`${brandId}|${group}`)||(group==='CHC_G2'&&keys.has(`${brandId}|CHC`));
   });
 }
+function keybotCompanyCurveAssignmentKeys(selection:any){
+  const raw=selection&&typeof selection==='object'?selection:{};
+  const curveKeys=(Array.isArray(raw?.keys)?raw.keys:Array.isArray(selection)?selection:[]).map((x:any)=>String(x||'').trim()).filter(Boolean);
+  if(curveKeys.length)return {keys:curveKeys,source:'curve'};
+  // Older Customer/Company records used Price Preference rows as the only
+  // Brand/Series assignment store. Curve-only users have no price feature,
+  // but those saved series still define which pump curves they may access.
+  const legacyKeys=(Array.isArray(raw?.price_keys)?raw.price_keys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean);
+  return {keys:legacyKeys,source:legacyKeys.length?'legacy_company_assignment':'none'};
+}
 async function guidedUserAvailableProducts(service:any,companyId:string,user:any){
   const email=String(user?.email||'').trim().toLowerCase(),role=String(user?.role||'').trim().toLowerCase(),companyCurveOnly=user?.company_curve_only===true;if((!email&&!companyCurveOnly)||!companyId)return [];
   let permission=companyCurveOnly||role==='owner'?'full':'assigned';
@@ -874,19 +884,23 @@ async function guidedUserAvailableProducts(service:any,companyId:string,user:any
     ]);
     if(customerResult.error||!customerResult.data)return [];
     if(preferenceResult.error)throw new Error(`Linked Company Brand / Series assignment could not be loaded: ${preferenceResult.error.message||preferenceResult.error}`);
-    // Curve-only access follows Customer Brand / Series assignment (`keys`).
-    // Price preference (`price_keys`) must never hide an assigned pump curve.
-    const curveKeys=(Array.isArray(preferenceResult.data?.selection?.keys)?preferenceResult.data.selection.keys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean);
+    // Prefer the dedicated Customer Curve assignment. Older Company records
+    // may only have Brand/Series rows in price_keys; use those solely as an
+    // access-scope fallback, never for price visibility or price checking.
+    const savedSelection=preferenceResult.data?.selection,curveAssignment=keybotCompanyCurveAssignmentKeys(savedSelection);let curveKeys=curveAssignment.keys;
     // Native B.G.Reich CHC / BFI / ES products do not require OEM mapping rows.
     // Build candidates directly from the linked company's saved Curve assignment,
     // otherwise a valid assignment can disappear before hydraulic sizing begins.
-    for(const rawKey of curveKeys){
-      const split=rawKey.lastIndexOf('|');if(split<=0)continue;
-      const brandId=rawKey.slice(0,split).trim(),savedGroup=rawKey.slice(split+1).trim().toUpperCase();
-      if(savedGroup==='*'){for(const group of ['CHC_G1','CHC_G2','BFI','ES'])add(brandId,group);continue}
-      add(brandId,savedGroup==='CHC'?'CHC_G2':savedGroup);
-    }
+    const addAssignedKeys=(keys:any[])=>{for(const rawKey of keys){const split=rawKey.lastIndexOf('|');if(split<=0)continue;const savedBrandId=rawKey.slice(0,split).trim(),brandId=[...brandNames.keys()].find((id:string)=>id.toLowerCase()===savedBrandId.toLowerCase())||'',savedGroup=rawKey.slice(split+1).trim().toUpperCase();if(!brandId)continue;if(savedGroup==='*'){for(const group of ['CHC_G1','CHC_G2','BFI','ES'])add(brandId,group);continue}add(brandId,savedGroup==='CHC'?'CHC_G2':savedGroup)}};
+    addAssignedKeys(curveKeys);
     available=keybotCustomerAssignedProducts([...candidates.values()].filter((x:any)=>x.has_curve===true),curveKeys);
+    // If an old/stale Curve key list resolves to no active family, retry the
+    // legacy Company assignment rows. This prevents a deleted Brand key from
+    // blocking every valid CHC/BFI/ES assignment saved in the older format.
+    if(!available.length&&curveAssignment.source==='curve'){
+      const legacyKeys=(Array.isArray(savedSelection?.price_keys)?savedSelection.price_keys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean);
+      if(legacyKeys.length){curveKeys=legacyKeys;addAssignedKeys(curveKeys);available=keybotCustomerAssignedProducts([...candidates.values()].filter((x:any)=>x.has_curve===true),curveKeys)}
+    }
     const chcCountByBrand=new Map<string,number>();
     for(const product of available){const group=String(product?.price_group||'').toUpperCase();if(group==='CHC_G1'||group==='CHC_G2'){const brandId=String(product?.brand_id||'');chcCountByBrand.set(brandId,(chcCountByBrand.get(brandId)||0)+1)}}
     available=available.map((product:any)=>({...product,keybot_curve_only:true,keybot_curve_only_chc_count:chcCountByBrand.get(String(product?.brand_id||''))||0}));
@@ -2331,10 +2345,10 @@ Deno.serve(async(req)=>{
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       if(isCompanyCurveOnlyUser(navigationUser)){
         await telegramSend(telegramToken,chatId,`Hi 👋\n\n${companyCurveOnlyPrompt()}`,companyCurveOnlyMenu());
-        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.11'});
+        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.12'});
       }
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.11'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.12'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2469,7 +2483,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.11'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.12'});
     }
 
     if(newRequestButton){
