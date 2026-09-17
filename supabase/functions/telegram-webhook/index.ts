@@ -709,12 +709,13 @@ function normalizeCustomerScope(value:any){
 }
 async function linkedKeySuiteUser(service:any,companyId:string,senderId:string){
   if(!companyId||!senderId)return null;
-  const map=await service.from('ks_keyai_sender_customer_v40903').select('keysuite_user_email,response_mode').eq('keysuite_company_id',companyId).eq('channel','telegram').eq('sender_id',senderId).maybeSingle();
+  const map=await service.from('ks_keyai_sender_customer_v40903').select('keysuite_user_email,customer_id,response_mode').eq('keysuite_company_id',companyId).eq('channel','telegram').eq('sender_id',senderId).maybeSingle();
   if(map.error){console.error('[KeySuite V4.14.00] Telegram user link lookup failed',map.error);return null}
-  const email=String(map.data?.keysuite_user_email||'').trim().toLowerCase(),responseMode=senderResponseMode(map.data?.response_mode);
+  const email=String(map.data?.keysuite_user_email||'').trim().toLowerCase(),linkedCustomerId=String(map.data?.customer_id||'').trim(),responseMode=senderResponseMode(map.data?.response_mode);
   // Company-only Telegram senders are valid for Check Curve. They deliberately
-  // have no KeySuite user/Role and inherit only the company's active curve Brand/Series.
-  if(!email)return responseMode==='curve_only'?{email:'',display_name:'',role:'',active:true,company_id:companyId,has_role:false,response_mode:responseMode,company_curve_only:true,view_customers:'none',view_customers_raw:'none'}:null;
+  // have no KeySuite user/Role. Their linked Customer/Company supplies the
+  // exact Brand / Series scope used for curve selection.
+  if(!email)return responseMode==='curve_only'&&linkedCustomerId?{email:'',display_name:'',role:'',active:true,company_id:companyId,has_role:false,response_mode:responseMode,company_curve_only:true,linked_customer_id:linkedCustomerId,view_customers:'none',view_customers_raw:'none'}:null;
   const access=await service.from('ks_user_access').select('email,display_name,role,active,company_id').eq('company_id',companyId).ilike('email',email).eq('active',true).maybeSingle();
   if(access.error||!access.data)return null;
   const role=String(access.data.role||'').trim().toLowerCase(),hasRole=!!role;
@@ -725,7 +726,7 @@ async function linkedKeySuiteUser(service:any,companyId:string,senderId:string){
     else if(pr.data?.permissions&&Object.prototype.hasOwnProperty.call(pr.data.permissions,'view_customers'))rawViewCustomers=String(pr.data.permissions.view_customers||'none').trim().toLowerCase();
   }
   const viewCustomers=normalizeCustomerScope(rawViewCustomers);
-  return {...access.data,email,role,has_role:hasRole,response_mode:responseMode,company_curve_only:!hasRole&&responseMode==='curve_only',view_customers:viewCustomers,view_customers_raw:rawViewCustomers};
+  return {...access.data,email,role,has_role:hasRole,response_mode:responseMode,company_curve_only:!hasRole&&responseMode==='curve_only',linked_customer_id:linkedCustomerId,view_customers:viewCustomers,view_customers_raw:rawViewCustomers};
 }
 async function findAllowedCustomers(service:any,companyId:string,user:any,query:string){
   if(!user||String(user.view_customers||'none')==='none')return [];
@@ -782,6 +783,10 @@ function guidedProductGroupMeta(groupValue:any){
   return {group,roleFamily,productLabel,productType,hasCurve:group==='CHC_G1'||group==='CHC_G2'||group==='BFI'||group==='ES'};
 }
 function guidedSelectorFamily(groupValue:any){const group=String(groupValue||'').trim().toUpperCase();return group==='CHC_G1'?'CHC_G1':group==='CHC_G2'?'CHC_G2':group==='BFI'?'BFI':group==='ES'?'ES':group==='CHC'?'CHC_G2':group}
+function keybotCustomerAssignedProducts(products:any[],priceKeys:any[]){
+  const keys=new Set((Array.isArray(priceKeys)?priceKeys:[]).map((x:any)=>String(x||'').trim()).filter(Boolean));
+  return (products||[]).filter((x:any)=>keys.has(`${String(x?.brand_id||'').trim()}|${String(x?.price_group||'').trim().toUpperCase()}`));
+}
 async function guidedUserAvailableProducts(service:any,companyId:string,user:any){
   const email=String(user?.email||'').trim().toLowerCase(),role=String(user?.role||'').trim().toLowerCase(),companyCurveOnly=user?.company_curve_only===true;if((!email&&!companyCurveOnly)||!companyId)return [];
   let permission=companyCurveOnly||role==='owner'?'full':'assigned';
@@ -854,7 +859,17 @@ async function guidedUserAvailableProducts(service:any,companyId:string,user:any
   // House products exist even though they are not OEM selling-brand rows.
   for(const g of ['BASEPLATE','COUPLING','KEYPLC','MANIFOLD'])add('KEYLARGO',g,'Keylargo');
   add('GWS','GWS','GWS');
-  const available=[...candidates.values()].filter((x:any)=>!companyCurveOnly||x.has_curve===true);
+  let available=[...candidates.values()].filter((x:any)=>!companyCurveOnly||x.has_curve===true);
+  if(companyCurveOnly){
+    const customerId=String(user?.linked_customer_id||'').trim();if(!customerId)return [];
+    const [customerResult,preferenceResult]=await Promise.all([
+      service.from('ks_customers').select('id').eq('company_id',companyId).eq('id',customerId).eq('status','active').maybeSingle(),
+      service.from('ks_customer_brand_price_preference_v41710').select('selection').eq('company_id',companyId).eq('customer_id',customerId).maybeSingle()
+    ]);
+    if(customerResult.error||!customerResult.data)return [];
+    if(preferenceResult.error)throw new Error(`Linked Company Brand / Series assignment could not be loaded: ${preferenceResult.error.message||preferenceResult.error}`);
+    available=keybotCustomerAssignedProducts(available,preferenceResult.data?.selection?.price_keys);
+  }
   return available.sort((a:any,b:any)=>guidedNaturalCompare(`${a.brand_name} ${a.product_label}`,`${b.brand_name} ${b.product_label}`));
 }
 async function guidedProductsForContext(service:any,companyId:string,user:any,customerId:any){
@@ -2287,10 +2302,10 @@ Deno.serve(async(req)=>{
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
       if(isCompanyCurveOnlyUser(navigationUser)){
         await telegramSend(telegramToken,chatId,`Hi 👋\n\n${companyCurveOnlyPrompt()}`,companyCurveOnlyMenu());
-        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.08'});
+        return json({ok:true,status:'keybot_curve_only_menu',version:'V4.27.09'});
       }
       await telegramSend(telegramToken,chatId,`Hi 👋\n\n${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.08'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.09'});
     }
     if(newRequestButton){
       session=await saveKeybotSession(service,keySuiteCompanyId,chatId,senderId,{mode:'',step:'idle',flow_m3h:null,head_m:null,flow_raw:null,head_raw:null,selected_customer_id:null,context:{}});
@@ -2425,7 +2440,7 @@ Deno.serve(async(req)=>{
       await telegramSend(telegramToken,chatId,`Hi 👋
 
 ${simpleRequestMenuText()}`,mainMenuMarkup());
-      return json({ok:true,status:'keybot_menu',version:'V4.27.08'});
+      return json({ok:true,status:'keybot_menu',version:'V4.27.09'});
     }
 
     if(newRequestButton){

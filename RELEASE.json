@@ -1,18 +1,15 @@
 {
-  "version": "4.27.08",
-  "baseline": "4.27.07 FULL CLEAN",
-  "upgrade_supported_from": "4.27.07",
+  "version": "4.27.09",
+  "baseline": "4.27.08 FULL CLEAN",
+  "upgrade_supported_from": "4.27.08",
   "changes": [
-    "Company-only Telegram senders assigned Check Curve can use KeyBot without a linked KeySuite email or Role",
-    "Company-only Check Curve users go directly to Brand, Series, Model or Duty input without Customer, Product or Selection menus",
-    "Company-only model access follows only the company active Brand and Series configuration",
-    "Check Price, Assemble and Add to System are hidden and blocked for company-only Check Curve users while Pump Configuration remains available",
-    "Generic ES sizing preserves at least one suitable 2-pole and one suitable 4-pole result when both speeds are available",
-    "ES 2P, ES 2Pole, ES 2900 and ES 2900rpm restrict sizing to 2900 rpm",
-    "ES 4P, ES 4Pole, ES 1450 and ES 1450rpm restrict sizing to 1450 rpm"
+    "Curve-only Telegram senders now retain their linked Customer/Company ID when no KeySuite User or Role is linked",
+    "Company-only curve searches are intersected with the linked Customer/Company Brand and Series Price Preference",
+    "ES 4P and other direct duty searches cannot return TESK, OK, VEC or any other Brand/Series not assigned to the linked Customer/Company",
+    "A curve-only sender without a valid linked Customer/Company is denied product access instead of falling back to every active brand"
   ],
   "new_database_migration_required": false,
   "edge_function_deploy_required": true,
   "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.07. Upload the V4.27.08 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
+  "notes": "Upgrade from V4.27.08. Upload the V4.27.09 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
 }
