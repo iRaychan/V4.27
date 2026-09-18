@@ -1,16 +1,16 @@
 {
-  "version": "4.27.13",
-  "baseline": "4.27.12 FULL CLEAN",
-  "upgrade_supported_from": "4.27.12",
+  "version": "4.27.14",
+  "baseline": "4.27.13 FULL CLEAN",
+  "upgrade_supported_from": "4.27.13",
   "changes": [
-    "Duty-only KeyBot searches try to include one suitable CHC, BFI, ES 2P and ES 4P model",
-    "Only assigned Brand/Series with a suitable priced Hot Item are included in the first recommendations",
-    "Families with no suitable Hot Item are skipped instead of displacing available common models",
-    "Cold Item models remain available through the Cold Item button",
-    "Explicit Brand, Series, pump-type and pole searches keep their existing focused ranking"
+    "VEC VMS Product pages apply the assigned series before becoming visible, removing the CHC flash",
+    "VEC VFI Product titles, series lists, model names and Dashboard results now use VFI instead of BFI",
+    "When only one CHC generation is assigned, Product, Selection and Dashboard display the common series name without C4 or C6",
+    "When both CHC generations are assigned, their C4 and C6 labels remain separate",
+    "Browser and runtime cache keys are refreshed so the corrected OEM identity loads immediately"
   ],
   "new_database_migration_required": false,
-  "edge_function_deploy_required": true,
-  "edge_function": "telegram-webhook",
-  "notes": "Upgrade from V4.27.12. Upload the V4.27.13 web assets and redeploy the Supabase telegram-webhook Edge Function with npx.cmd to project skidqdixnnnuhvarekxp. No database push is required for this release."
+  "edge_function_deploy_required": false,
+  "edge_function": null,
+  "notes": "Upgrade from V4.27.13. Upload the V4.27.14 web assets to GitHub. No Supabase function deployment or database push is required for this release."
 }

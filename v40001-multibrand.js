@@ -766,6 +766,12 @@
       return order(a.productGroup)-order(b.productGroup)||String(a.label).localeCompare(String(b.label),undefined,{numeric:true});
     });
   }
+  function visibleFamilyLabel(item,peers=[]){
+    const label=String(item?.label||productGroupLabel(item?.productGroup||item?.family)||'').trim();
+    if(baseFamily(item?.productGroup||item?.family)!=='CHC')return label;
+    const chcCount=(Array.isArray(peers)?peers:[]).filter(x=>baseFamily(x?.productGroup||x?.family)==='CHC').length;
+    return chcCount===1?label.replace(/\s+C(?:4|6)$/i,'').trim():label;
+  }
   function renderProductTree(){
     const submenu=document.querySelector('.nav-group[data-nav-group="productMenu"] .nav-submenu');if(!submenu)return;
     if(!canUseProduct()){submenu.innerHTML='';return}
@@ -800,7 +806,7 @@
         if(!keyAllowed.length&&!gwsAllowed)host.innerHTML='<div class="muted" style="padding:8px 10px">No Product Brand / Series is assigned to this user and selected Customer.</div>';
         return;
       }
-      allowed.forEach(item=>{const btn=document.createElement('button');btn.type='button';btn.className='v391-family-btn';btn.textContent=item.label;btn.dataset.brandId=item.brand.id;btn.dataset.family=item.family;btn.dataset.page=item.page;if(item.generation)btn.dataset.generation=item.generation;const genOk=!item.generation||productChcGeneration()===item.generation;if(String(state.selectedBrandId)===String(item.brand.id)&&String(state.selectedFamily)===item.family&&genOk)btn.classList.add('active');btn.onclick=()=>{if(!setSelectedBrand(item.brand.id,item.family,item.page,item.productGroup||item.family))return;if(item.generation)activateChcGeneration(item.generation);document.querySelectorAll('.v391-family-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');window.KeySuiteApp?.showPage?.(item.page);setTimeout(()=>{postBrandContext(item.page);decorateProductDisplaySoon();},100)};host.appendChild(btn)});
+      allowed.forEach(item=>{const btn=document.createElement('button');btn.type='button';btn.className='v391-family-btn';const peers=allowed.filter(x=>String(x.brand?.id)===String(item.brand?.id));btn.textContent=visibleFamilyLabel(item,peers);btn.dataset.brandId=item.brand.id;btn.dataset.family=item.family;btn.dataset.page=item.page;if(item.generation)btn.dataset.generation=item.generation;const genOk=!item.generation||productChcGeneration()===item.generation;if(String(state.selectedBrandId)===String(item.brand.id)&&String(state.selectedFamily)===item.family&&genOk)btn.classList.add('active');btn.onclick=()=>{if(!setSelectedBrand(item.brand.id,item.family,item.page,item.productGroup||item.family))return;if(item.generation)activateChcGeneration(item.generation);document.querySelectorAll('.v391-family-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');window.KeySuiteApp?.showPage?.(item.page);postBrandContext(item.page);decorateProductDisplaySoon()};host.appendChild(btn)});
       return;
     }
     // V4.04.21 Product hierarchy: Keylargo, B.G.Reich and TESK are first-class top-level groups.
@@ -810,7 +816,7 @@
     const navBrands=navigationCommercialBrands();
     const bg=navBrands.find(b=>String(b.brand_key||'').toLowerCase()==='b.g.reich'||String(b.brand_name||'').toLowerCase()==='b.g.reich')||null;
     const tesk=navBrands.find(b=>String(b.brand_key||'').toLowerCase()==='tesk'||String(b.brand_name||'').toLowerCase()==='tesk')||null;
-    const addFamilyButtons=(host,b,families)=>{if(!host||!b)return;families.filter(f=>authority()?.isBrandSeriesAllowed?.(b.id,f.productGroup||f.family)&&customerAllowsProduct(b.id,f.productGroup||f.family,f.family)).forEach(f=>{const btn=document.createElement('button');btn.type='button';btn.className='v391-family-btn';btn.textContent=f.label;btn.dataset.brandId=b.id;btn.dataset.family=f.family;btn.dataset.page=f.page;if(f.generation)btn.dataset.generation=f.generation;const genOk=!f.generation||productChcGeneration()===f.generation;if(String(state.selectedBrandId)===String(b.id)&&String(state.selectedFamily)===f.family&&genOk)btn.classList.add('active');btn.onclick=()=>{setSelectedBrand(b.id,f.family,f.page,f.productGroup||f.family);if(f.generation)activateChcGeneration(f.generation);document.querySelectorAll('.v391-family-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');window.KeySuiteApp?.showPage?.(f.page);setTimeout(()=>{postBrandContext(f.page);decorateProductDisplaySoon();},100);};host.appendChild(btn)});};
+    const addFamilyButtons=(host,b,families)=>{if(!host||!b)return;const eligible=families.filter(f=>authority()?.isBrandSeriesAllowed?.(b.id,f.productGroup||f.family)&&customerAllowsProduct(b.id,f.productGroup||f.family,f.family));eligible.forEach(f=>{const btn=document.createElement('button');btn.type='button';btn.className='v391-family-btn';btn.textContent=visibleFamilyLabel(f,eligible);btn.dataset.brandId=b.id;btn.dataset.family=f.family;btn.dataset.page=f.page;if(f.generation)btn.dataset.generation=f.generation;const genOk=!f.generation||productChcGeneration()===f.generation;if(String(state.selectedBrandId)===String(b.id)&&String(state.selectedFamily)===f.family&&genOk)btn.classList.add('active');btn.onclick=()=>{setSelectedBrand(b.id,f.family,f.page,f.productGroup||f.family);if(f.generation)activateChcGeneration(f.generation);document.querySelectorAll('.v391-family-btn').forEach(x=>x.classList.remove('active'));btn.classList.add('active');window.KeySuiteApp?.showPage?.(f.page);postBrandContext(f.page);decorateProductDisplaySoon();};host.appendChild(btn)});};
     if(bg)addFamilyButtons(bgHost,bg,brandFamilies(bg));else tree.querySelector('.v391-bgreich-root')?.remove();
     if(tesk&&brandFamilies(tesk).length)addFamilyButtons(teskHost,tesk,brandFamilies(tesk));else tree.querySelector('.v391-tesk-root')?.remove();
     // V4.13: GWS is a first-class expandable left-panel group below TESK.
@@ -930,7 +936,7 @@
         btn.type='button';btn.className='v391-family-btn';
         // V4.21.02: Selection visible name follows the saved Brand Series.
         // CHC G1 and G2 are independent hydraulic generations using the same Selection format.
-        btn.textContent=brandSeriesFor(brand,f.productGroup||f.family)||productGroupLabel(f.productGroup||f.family)||String(f.family||'').toUpperCase();
+        btn.textContent=visibleFamilyLabel({...f,label:brandSeriesFor(brand,f.productGroup||f.family)||productGroupLabel(f.productGroup||f.family)||String(f.family||'').toUpperCase()},families);
         btn.dataset.brandId=brand.id;btn.dataset.family=f.family;btn.dataset.page=page;
         const selectorGeneration=String(f.generation||generationForGroup(f.productGroup||f.family)||'').toUpperCase();
         if(f.family==='CHC'&&selectorGeneration)btn.dataset.generation=selectorGeneration;
